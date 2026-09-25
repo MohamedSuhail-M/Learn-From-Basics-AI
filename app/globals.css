@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 200 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 200 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 200 25% 12%;
+  --primary: 175 65% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 15% 94%;
+  --secondary-foreground: 200 25% 15%;
+  --muted: 200 15% 95%;
+  --muted-foreground: 200 10% 45%;
+  --accent: 38 85% 52%;
+  --accent-foreground: 200 25% 12%;
+  --destructive: 0 72% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 15% 88%;
+  --input: 200 15% 88%;
+  --ring: 175 65% 32%;
+  --chart-1: 175 65% 40%;
+  --chart-2: 38 85% 52%;
+  --chart-3: 200 70% 50%;
+  --chart-4: 145 55% 45%;
+  --chart-5: 0 72% 55%;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+  .animate-pulse-soft {
+    animation: pulseSoft 2s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
