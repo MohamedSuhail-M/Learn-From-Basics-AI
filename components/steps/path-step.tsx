@@ -66,17 +66,11 @@ function PathStepCard({ step, isLast }: { step: LearningPathStep; isLast: boolea
                 Mastered
               </Badge>
             )}
-            {step.masteryStatus === 'weak' && (
-              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px]">
-                <AlertTriangle className="w-3 h-3 mr-1" />
-                Weak
-              </Badge>
-            )}
-            {step.masteryStatus === 'unknown' && (
-              <Badge variant="outline" className="text-muted-foreground text-[10px]">
-                Not Assessed
-              </Badge>
-            )}
+            {step.masteryStatus !== 'mastered' && step.masteryStatus !== 'weak' && (
+  <Badge variant="outline" className="text-muted-foreground text-[10px]">
+    Not Assessed
+  </Badge>
+)}
           </div>
         </div>
         <p className="text-xs text-muted-foreground mb-2">{step.reason}</p>

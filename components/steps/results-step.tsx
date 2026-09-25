@@ -1,102 +1,147 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, Target, CheckCircle2, AlertTriangle, ArrowRight, AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  CheckCircle2,
+  AlertOctagon,
+  ArrowRight,
+  RotateCcw,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  HelpCircle,
+  FileCheck2,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabase';
 import type {
   Concept,
   DependencyEdge,
-  QuizQuestion,
-  QuizAnswer,
   GapAnalysis,
+  LearningPath,
 } from '@/lib/types';
-import { mockGapAnalysis } from '@/lib/mock-data';
+import { mockLearningPath } from '@/lib/mock-data';
 
-interface ResultsStepProps {
+interface PathStepProps {
   concepts: Concept[];
   edges: DependencyEdge[];
-  questions: QuizQuestion[];
-  answers: QuizAnswer[];
-  onComplete: (gapAnalysis: GapAnalysis, goalConceptId: string) => void;
+  gapAnalysis: GapAnalysis;
+  goalConceptId: string;
+  onRestart: () => void;
 }
 
-export function ResultsStep({ concepts, questions, answers, onComplete }: ResultsStepProps) {
+export function PathStep({
+  concepts,
+  edges,
+  gapAnalysis,
+  goalConceptId,
+  onRestart,
+}: PathStepProps) {
   const [loading, setLoading] = useState(true);
-  const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
-  const [goalConceptId, setGoalConceptId] = useState<string>('');
+  const [learningPath, setLearningPath] = useState<LearningPath | null>(null);
   const [usedFallback, setUsedFallback] = useState(false);
+  const [expandedQuotes, setExpandedQuotes] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
-  const analyze = useCallback(async () => {
+  const persistPathToSupabase = useCallback(
+    async (path: LearningPath) => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        await supabase.from('learning_paths').insert({
+          user_id: user.id,
+          goal_concept: path.goalConceptName || goalConceptId,
+          steps: path.steps,
+          why_explanation: path.whyExplanation || '',
+          created_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('[PathStep] Skipping database persist:', err);
+      }
+    },
+    [goalConceptId]
+  );
+
+  const generate = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/analyze-gaps', {
+      const res = await fetch('/api/generate-path', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions, answers }),
+        body: JSON.stringify({
+          concepts,
+          edges,
+          gapAnalysis,
+          goalConceptId,
+        }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setGapAnalysis(data);
-      const weakConcepts = data.results?.filter((r: { status: string }) => r.status === 'weak') || [];
-      const masteredCount = data.results?.filter((r: { status: string }) => r.status === 'mastered').length || 0;
+      setLearningPath(data);
+      await persistPathToSupabase(data);
+
       toast({
-        title: 'Gap analysis complete',
-        description: `${masteredCount} mastered, ${weakConcepts.length} weak spots found.`,
+        title: 'Learning path generated',
+        description: `Constructed ${data.steps?.length || 0} milestone steps to reach your goal.`,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to analyze gaps';
-      console.warn('[ResultsStep] Falling back to mock gap analysis:', message);
-      setGapAnalysis(mockGapAnalysis);
+      const message = err instanceof Error ? err.message : 'Path generation failed';
+      console.warn('[PathStep] Falling back to mock path:', message);
+      const fallback = mockLearningPath(goalConceptId);
+      setLearningPath(fallback);
       setUsedFallback(true);
+      await persistPathToSupabase(fallback);
+
       toast({
-        title: 'Using sample results',
-        description: 'AI gap analysis unavailable — showing demo results.',
+        title: 'Using sample learning path',
+        description: 'AI path engine unavailable — displaying sample path.',
       });
     } finally {
       setLoading(false);
     }
-  }, [questions, answers, toast]);
+  }, [concepts, edges, gapAnalysis, goalConceptId, persistPathToSupabase, toast]);
 
   useEffect(() => {
-    analyze();
-  }, [analyze]);
+    generate();
+  }, [generate]);
 
-  if (loading || !gapAnalysis) {
+  const toggleQuote = (conceptId: string) => {
+    setExpandedQuotes((prev) => ({
+      ...prev,
+      [conceptId]: !prev[conceptId],
+    }));
+  };
+
+  if (loading || !learningPath) {
     return (
-      <div className="max-w-2xl mx-auto animate-fade-in">
-        <div className="text-center mb-6">
-          <Skeleton className="h-8 w-48 mx-auto mb-2" />
-          <Skeleton className="h-4 w-64 mx-auto" />
+      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+        <div className="text-center space-y-2">
+          <Skeleton className="h-8 w-64 mx-auto" />
+          <Skeleton className="h-4 w-96 mx-auto" />
         </div>
-        <Card className="p-6 mb-6">
-          <div className="flex items-center justify-around mb-4">
-            <Skeleton className="h-12 w-16" />
-            <Skeleton className="h-12 w-16" />
-            <Skeleton className="h-12 w-16" />
-          </div>
-          <Skeleton className="h-2 w-full rounded-full" />
+        <Card className="p-6">
+          <Skeleton className="h-6 w-1/3 mb-4" />
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-4 w-5/6" />
         </Card>
-        <div className="space-y-3">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
             <Card key={i} className="p-4">
-              <div className="flex items-start gap-3">
-                <Skeleton className="w-5 h-5 rounded-full" />
+              <div className="flex items-start gap-4">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/3" />
-                  <Skeleton className="h-3 w-2/3" />
+                  <Skeleton className="h-5 w-1/3" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-16 w-full rounded-xl mt-2" />
                 </div>
               </div>
             </Card>
@@ -106,98 +151,145 @@ export function ResultsStep({ concepts, questions, answers, onComplete }: Result
     );
   }
 
-  const masteredCount = gapAnalysis.results.filter((r) => r.status === 'mastered').length;
-  const weakCount = gapAnalysis.results.filter((r) => r.status === 'weak').length;
-  const scorePercent = Math.round((masteredCount / gapAnalysis.results.length) * 100);
-
   return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Your Results</h2>
-        <p className="text-muted-foreground">{gapAnalysis.summary}</p>
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in pb-12">
+      <div className="text-center space-y-2">
+        <h2 className="text-2xl font-bold text-foreground">Personalized Learning Sequence</h2>
+        <p className="text-sm text-muted-foreground">
+          Topological prerequisite progression toward mastering{' '}
+          <span className="font-semibold text-primary">
+            {learningPath.goalConceptName || goalConceptId}
+          </span>
+        </p>
       </div>
 
       {usedFallback && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>Showing demo results (AI was unavailable). Add an OpenAI API key for real analysis.</span>
+        <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>Showing sample sequence (AI was unavailable). Add your GEMINI_API_KEY for live paths.</span>
         </div>
       )}
 
-      <Card className="p-6 mb-6">
-        <div className="flex items-center justify-around mb-4">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-primary">{masteredCount}</div>
-            <div className="text-xs text-muted-foreground mt-1">Mastered</div>
+      {learningPath.whyExplanation && (
+        <Card className="border-primary/30 bg-primary/5 p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <HelpCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="font-semibold text-sm text-foreground">Why start with this sequence?</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {learningPath.whyExplanation}
+              </p>
+            </div>
           </div>
-          <div className="w-px h-12 bg-border" />
-          <div className="text-center">
-            <div className="text-3xl font-bold text-destructive">{weakCount}</div>
-            <div className="text-xs text-muted-foreground mt-1">Weak</div>
-          </div>
-          <div className="w-px h-12 bg-border" />
-          <div className="text-center">
-            <div className="text-3xl font-bold text-foreground">{scorePercent}%</div>
-            <div className="text-xs text-muted-foreground mt-1">Score</div>
-          </div>
-        </div>
-        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary transition-all duration-700" style={{ width: `${scorePercent}%` }} />
-        </div>
-      </Card>
+        </Card>
+      )}
 
-      <div className="space-y-3 mb-6">
-        {gapAnalysis.results.map((r, i) => {
-          const concept = concepts.find((c) => c.id === r.conceptId);
+      <div className="relative border-l-2 border-primary/30 ml-4 space-y-6 pl-6 pt-2">
+        {learningPath.steps.map((step) => {
+          const isBlocking = step.isBlocking || step.conceptId === learningPath.blockingConceptId;
+          const isMastered = step.masteryStatus === 'mastered';
+          const matchedEdge = edges.find((e) => e.target === step.conceptId);
+          const evidenceQuote = matchedEdge?.evidence;
+          const isQuoteOpen = expandedQuotes[step.conceptId] ?? false;
+
           return (
-            <Card key={r.conceptId} className="p-4 animate-slide-up" style={{ animationDelay: `${i * 60}ms` }}>
-              <div className="flex items-start gap-3">
-                {r.status === 'mastered' ? (
-                  <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                ) : (
-                  <AlertTriangle className="w-5 h-5 text-destructive mt-0.5 flex-shrink-0" />
-                )}
-                <div>
-                  <p className="font-medium text-foreground">{concept?.name || r.conceptId}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">{r.explanation}</p>
-                </div>
+            <div key={step.conceptId} className="relative">
+              <div
+                className={`absolute -left-[37px] top-1.5 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-all duration-300 ${
+                  isMastered
+                    ? 'bg-emerald-500 text-white'
+                    : isBlocking
+                    ? 'bg-rose-500 text-white ring-4 ring-rose-500/20'
+                    : 'bg-primary text-primary-foreground'
+                }`}
+              >
+                {isMastered ? <CheckCircle2 className="w-4 h-4" /> : step.order}
               </div>
-            </Card>
+
+              <Card
+                className={`transition-colors shadow-sm ${
+                  isBlocking ? 'border-rose-500/40 bg-rose-500/5' : 'border-border/70'
+                }`}
+              >
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <span>{step.conceptName}</span>
+                      {isBlocking && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 font-semibold border border-rose-500/20">
+                          <AlertOctagon className="w-3 h-3" /> Priority Bottleneck
+                        </span>
+                      )}
+                    </CardTitle>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                        isMastered
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                      }`}
+                    >
+                      {isMastered ? 'Mastered' : 'Knowledge Gap'}
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-4 pt-1 space-y-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed">{step.reason}</p>
+
+                  {(step.whyExplanation || isBlocking) && (
+                    <div className="mt-3 p-3.5 rounded-xl border border-primary/20 bg-primary/5 text-xs space-y-1.5">
+                      <div className="font-semibold text-primary flex items-center gap-1.5">
+                        <span>💡 Why learn this first?</span>
+                      </div>
+                      <p className="text-foreground leading-relaxed">
+                        {step.whyExplanation ||
+                          learningPath.whyExplanation ||
+                          'This concept forms the foundational prerequisite required before downstream topics can be calculated or understood.'}
+                      </p>
+                      {evidenceQuote && (
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleQuote(step.conceptId)}
+                            className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                          >
+                            <FileCheck2 className="w-3.5 h-3.5" />
+                            <span>Course Material Evidence</span>
+                            {isQuoteOpen ? (
+                              <ChevronUp className="w-3 h-3" />
+                            ) : (
+                              <ChevronDown className="w-3 h-3" />
+                            )}
+                          </button>
+                          {isQuoteOpen && (
+                            <blockquote className="mt-2 pl-3 border-l-2 border-primary/40 italic text-muted-foreground text-[11px] animate-fade-in">
+                              "{evidenceQuote}"
+                            </blockquote>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           );
         })}
       </div>
 
-      <Card className="p-5 mb-6 border-primary/30 bg-primary/5">
-        <div className="flex items-center gap-2 mb-3">
-          <Target className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">Choose Your Learning Goal</h3>
-        </div>
-        <p className="text-sm text-muted-foreground mb-3">
-          Select the concept you want to master. We&apos;ll build the shortest path to get there.
-        </p>
-        <Label className="mb-2 block">Goal Concept</Label>
-        <Select value={goalConceptId} onValueChange={setGoalConceptId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a concept to master..." />
-          </SelectTrigger>
-          <SelectContent>
-            {concepts.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Card>
-
-      <Button
-        className="w-full"
-        onClick={() => onComplete(gapAnalysis, goalConceptId)}
-        disabled={!goalConceptId}
-      >
-        Generate Learning Path
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-border">
+        <Button variant="outline" onClick={onRestart} className="w-full sm:w-auto gap-1.5 text-xs">
+          <RotateCcw className="w-3.5 h-3.5" /> Reset Demo
+        </Button>
+        <Button
+          onClick={() => {
+            window.location.href = '/dashboard';
+          }}
+          className="w-full sm:w-auto gap-1.5 text-xs"
+        >
+          View in Dashboard <ArrowRight className="w-3.5 h-3.5" />
+        </Button>
+      </div>
     </div>
   );
 }

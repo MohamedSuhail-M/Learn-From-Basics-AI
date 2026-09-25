@@ -1,9 +1,9 @@
+import { LearningPath, LearningPathStep } from './types';
 import type {
   Concept,
   DependencyEdge,
   QuizQuestion,
   GapAnalysis,
-  LearningPath,
 } from './types';
 
 export const mockConcepts: Concept[] = [
@@ -128,7 +128,7 @@ export function mockLearningPath(goalConceptId: string): LearningPath {
     goalConceptId,
     goalConceptName: goalName,
     steps,
-    blockingConceptId: blocking?.conceptId || null,
+    blockingConceptId: blocking?.conceptId ?? undefined,
     whyExplanation,
   };
 }

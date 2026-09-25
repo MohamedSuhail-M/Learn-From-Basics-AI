@@ -12,11 +12,12 @@ export interface Concept {
 
 export interface DependencyEdge {
   id: string;
-  source: string; // concept id (prerequisite)
-  target: string; // concept id (dependent)
-  type: RelationshipType;
-  confidence: number; // 0-100
-  evidence: string; // quote from source text
+  source: string;
+  target: string;
+  type: 'prerequisite' | 'builds-on' | 'related' | 'example-of';
+  confidence: number;
+  evidence: string;
+  whyLearnFirst?: string; // <-- Add this field
 }
 
 export interface QuizQuestion {
@@ -50,16 +51,16 @@ export interface LearningPathStep {
   isBlocking: boolean;
   masteryStatus: 'mastered' | 'weak' | 'unknown';
   reason: string;
+  whyExplanation?: string; // Fixes results-step.tsx ts(2339)
 }
 
 export interface LearningPath {
   goalConceptId: string;
   goalConceptName: string;
   steps: LearningPathStep[];
-  blockingConceptId: string | null;
-  whyExplanation: string;
+  blockingConceptId?: string | null; // Fixes mock-data.ts ts(2322)
+  whyExplanation?: string;
 }
-
 export interface ExtractionResult {
   concepts: Concept[];
   edges: DependencyEdge[];
