@@ -95,6 +95,9 @@ export function ConceptGraph({ concepts, edges, onSelectConcept }: ConceptGraphP
           </CardContent>
         </Card>
       )}
+      <div className="relative p-6 sm:p-8 rounded-3xl border border-white/10 bg-slate-900/50 backdrop-blur-2xl space-y-6 shadow-2xl">
+  {/* Keep your existing graph nodes, SVG connectors, and click handlers untouched here */}
+</div>
     </div>
   );
 }

@@ -7,90 +7,102 @@ export async function POST(req: NextRequest) {
   try {
     const { documentText, topic } = await req.json();
 
-    const context = documentText || topic || 'Core Computer Science Principles';
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY;
 
-    // If you have Google Gemini / OpenAI configured:
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'GEMINI_API_KEY is not configured in .env.local' },
+        { status: 500 }
+      );
+    }
 
-    if (apiKey) {
-      const prompt = `Based on the following learning material, generate 3 diagnostic multiple-choice questions to evaluate knowledge gaps and prerequisites. 
-Return ONLY valid JSON array with format:
+    const cleanContent =
+      documentText && documentText.trim().length > 20
+        ? documentText.slice(0, 8000)
+        : topic || 'Foundational Computing Systems & Algorithms';
+
+    const prompt = `Analyze this course material and generate 4 sequential prerequisite multiple-choice questions.
+
+MATERIAL:
+"""
+${cleanContent}
+"""
+
+INSTRUCTIONS:
+1. Ground every question strictly in the provided material.
+2. For "sourceQuote", extract an exact quote, definition, or formula from the text.
+3. For "sourceContext", identify the specific module, section header, or topic from the text.
+4. For "learningResource", provide a reliable external learning link (official documentation, Wikipedia, or OpenCourseWare) relevant to that prerequisite.
+5. Return ONLY a valid JSON array matching this schema (no markdown, no code blocks):
 [
   {
     "id": 1,
-    "question": "Question text here",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "concept": "Name of Concept",
+    "question": "Question evaluating this concept?",
+    "options": ["Correct Answer", "Option B", "Option C", "Option D"],
     "correctIndex": 0,
-    "concept": "Name of concept tested",
-    "explanation": "Why this is correct"
+    "explanation": "Why this answer is correct based on the text.",
+    "sourceQuote": "Verbatim quote from the material.",
+    "sourceContext": "Section / Chapter / Topic reference",
+    "prerequisites": [],
+    "learningResource": {
+      "title": "MDN Web Docs / Wikipedia / MIT OCW",
+      "url": "https://en.wikipedia.org/wiki/..."
+    }
   }
-]
+]`;
 
-Material:
-${context.slice(0, 3000)}`;
+    const modelCandidates = [
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+    ];
 
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        }),
-      });
+    let rawText = '';
+    for (const model of modelCandidates) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey,
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0.3,
+                responseMimeType: 'application/json',
+              },
+            }),
+          }
+        );
 
-      const data = await res.json();
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (rawText) {
-        return NextResponse.json({ questions: JSON.parse(rawText) });
+        if (res.ok) {
+          const data = await res.json();
+          rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (rawText) break;
+        }
+      } catch {
+        continue;
       }
     }
 
-    // Dynamic fallback questions derived from extracted text
-    const fallbackQuestions = [
-      {
-        id: 1,
-        question: `Based on your material, what is the core role of ${topic || 'the foundational concepts'}?`,
-        options: [
-          'It quantifies uncertainty or prerequisite states',
-          'It completely replaces brute-force algorithms',
-          'It serves as a purely aesthetic documentation layer',
-          'It is only applicable to hardware-level operations'
-        ],
-        correctIndex: 0,
-        concept: 'Foundational Theory',
-        explanation: 'Foundational concepts quantify structural and statistical dependencies.'
-      },
-      {
-        id: 2,
-        question: 'When attribute impurity or entropy is at its maximum, what does it signify?',
-        options: [
-          'Complete certainty with homogeneous samples',
-          'Maximum randomness with equal class distribution',
-          'A leaf node has been reached',
-          'The tree depth must be set to 0'
-        ],
-        correctIndex: 1,
-        concept: 'Entropy & Information Gain',
-        explanation: 'Maximum entropy represents maximum impurity and uncertainty across classes.'
-      },
-      {
-        id: 3,
-        question: 'Why must prerequisites be traversed in topological order before tackling target goals?',
-        options: [
-          'To guarantee no prerequisite cycle or unfulfilled dependency blocks understanding',
-          'Because compilers execute strictly from left to right',
-          'To minimize total memory footprint in RAM',
-          'To compress document file sizes'
-        ],
-        correctIndex: 0,
-        concept: 'Prerequisite Dependency Graphs',
-        explanation: 'Topological sorting guarantees that every foundational concept is mastered before dependent nodes are approached.'
-      }
-    ];
+    if (!rawText) {
+      throw new Error('Inference failed across candidate models.');
+    }
 
-    return NextResponse.json({ questions: fallbackQuestions });
+    const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const questions = JSON.parse(cleaned);
+
+    return NextResponse.json({ questions });
   } catch (err: any) {
-    console.error('Quiz generation error:', err);
-    return NextResponse.json({ error: 'Failed to generate assessment questions' }, { status: 500 });
+    console.error('[generate-quiz error]:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
