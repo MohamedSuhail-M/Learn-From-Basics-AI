@@ -10,8 +10,19 @@ import {
   HelpCircle,
   BookOpen,
   ArrowLeft,
-  GraduationCap,
+  Sparkles,
+  Loader2,
+  HelpCircleIcon
 } from 'lucide-react';
+
+interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  concept: string;
+  explanation: string;
+}
 
 interface PathStepItem {
   conceptId: string;
@@ -24,68 +35,174 @@ interface PathStepItem {
   evidenceQuote?: string;
 }
 
-const DEFAULT_STEPS: PathStepItem[] = [
-  {
-    conceptId: 'c1',
-    conceptName: 'Probability Distributions',
-    order: 1,
-    isBlocking: false,
-    masteryStatus: 'mastered',
-    reason: 'Underpins information theory and discrete uncertainty calculation.',
-  },
-  {
-    conceptId: 'c2',
-    conceptName: 'Entropy & Information Gain',
-    order: 2,
-    isBlocking: true,
-    masteryStatus: 'weak',
-    reason: 'Direct prerequisite required to understand attribute splitting in Decision Trees.',
-    whyExplanation:
-      'Entropy quantifies impurity. Without it, you cannot calculate information gain at split nodes.',
-    evidenceQuote:
-      'Calculating entropy requires discrete probability distributions over classes.',
-  },
-  {
-    conceptId: 'c3',
-    conceptName: 'Decision Trees',
-    order: 3,
-    isBlocking: false,
-    masteryStatus: 'weak',
-    reason: 'Target goal concept.',
-  },
-];
-
 export default function LearningPathPage() {
-  const [steps, setSteps] = useState<PathStepItem[]>(DEFAULT_STEPS);
-  const [activeCourse, setActiveCourse] = useState<string>('Decision Trees & Information Theory');
+  const [activeCourse, setActiveCourse] = useState<string>('Document Material');
+  const [loadingQuiz, setLoadingQuiz] = useState<boolean>(true);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [currentQIndex, setCurrentQIndex] = useState<number>(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
+  const [assessmentCompleted, setAssessmentCompleted] = useState<boolean>(false);
+  const [steps, setSteps] = useState<PathStepItem[]>([]);
 
+  // 1. Fetch questions using the stored document text
   useEffect(() => {
-    // Restore generated path or topic if available in session
-    const storedTopic = sessionStorage.getItem('selectedCourseTopic');
-    const storedDocName = sessionStorage.getItem('currentDocumentName');
+    const docText = sessionStorage.getItem('currentDocumentText') || '';
+    const docName = sessionStorage.getItem('currentDocumentName') || '';
+    const topic = sessionStorage.getItem('selectedCourseTopic') || 'Machine Learning & Prerequisite Basics';
 
-    if (storedDocName) {
-      setActiveCourse(storedDocName);
-    } else if (storedTopic) {
-      setActiveCourse(storedTopic.replace(/_/g, ' '));
-    }
+    if (docName) setActiveCourse(docName);
+    else if (topic) setActiveCourse(topic.replace(/_/g, ' '));
 
-    const savedPath = sessionStorage.getItem('generatedLearningPath');
-    if (savedPath) {
+    async function loadQuiz() {
       try {
-        const parsed = JSON.parse(savedPath);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setSteps(parsed);
+        const res = await fetch('/api/generate-quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentText: docText, topic }),
+        });
+        const data = await res.json();
+        if (data.questions && data.questions.length > 0) {
+          setQuestions(data.questions);
         }
-      } catch (err) {
-        console.error('Failed to parse cached learning path:', err);
+      } catch (e) {
+        console.error('Quiz fetch failed', e);
+      } finally {
+        setLoadingQuiz(false);
       }
     }
+
+    loadQuiz();
   }, []);
 
+  const handleSelectOption = (qId: number, optIdx: number) => {
+    setSelectedAnswers((prev) => ({ ...prev, [qId]: optIdx }));
+  };
+
+  const handleFinishAssessment = () => {
+    // Grade responses to derive actual mastered vs weak steps
+    const generatedSteps: PathStepItem[] = questions.map((q, idx) => {
+      const userAnswer = selectedAnswers[q.id];
+      const isCorrect = userAnswer === q.correctIndex;
+
+      return {
+        conceptId: `c-${q.id}`,
+        conceptName: q.concept,
+        order: idx + 1,
+        isBlocking: !isCorrect,
+        masteryStatus: isCorrect ? 'mastered' : 'weak',
+        reason: isCorrect
+          ? `Mastered in diagnostic: ${q.explanation}`
+          : `Diagnosed knowledge gap: ${q.explanation}`,
+        whyExplanation: !isCorrect
+          ? `You missed question ${idx + 1}. Reviewing ${q.concept} is required before advancing.`
+          : undefined,
+        evidenceQuote: !isCorrect ? q.question : undefined,
+      };
+    });
+
+    setSteps(generatedSteps);
+    setAssessmentCompleted(true);
+    // Cache path
+    sessionStorage.setItem('generatedLearningPath', JSON.stringify(generatedSteps));
+  };
+
+  // State A: Loading the Derived Questions
+  if (loadingQuiz) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground font-medium">
+          Extracting concepts and generating diagnostic assessment from your material...
+        </p>
+      </div>
+    );
+  }
+
+  // State B: Active Assessment Mode
+  if (!assessmentCompleted && questions.length > 0) {
+    const currentQ = questions[currentQIndex];
+    const isAnswered = selectedAnswers[currentQ.id] !== undefined;
+    const isLast = currentQIndex === questions.length - 1;
+
+    return (
+      <div className="max-w-2xl mx-auto p-6 space-y-6">
+        <div className="flex items-center justify-between pb-4 border-b">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+              Diagnostic Assessment
+            </span>
+            <h1 className="text-xl font-bold tracking-tight">{activeCourse}</h1>
+          </div>
+          <span className="text-xs bg-muted px-2.5 py-1 rounded-full font-medium">
+            Question {currentQIndex + 1} of {questions.length}
+          </span>
+        </div>
+
+        <Card className="border shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold leading-relaxed">
+              {currentQ.question}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {currentQ.options.map((opt, optIdx) => {
+              const selected = selectedAnswers[currentQ.id] === optIdx;
+              return (
+                <button
+                  key={optIdx}
+                  onClick={() => handleSelectOption(currentQ.id, optIdx)}
+                  className={`w-full text-left p-3.5 rounded-lg border text-sm transition-all ${
+                    selected
+                      ? 'border-primary bg-primary/10 font-semibold text-primary'
+                      : 'border-border hover:bg-accent'
+                  }`}
+                >
+                  <span className="mr-2 font-mono text-xs opacity-60">
+                    {String.fromCharCode(65 + optIdx)}.
+                  </span>
+                  {opt}
+                </button>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-between items-center pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={currentQIndex === 0}
+            onClick={() => setCurrentQIndex((i) => i - 1)}
+          >
+            Previous
+          </Button>
+
+          {isLast ? (
+            <Button
+              size="sm"
+              disabled={!isAnswered}
+              onClick={handleFinishAssessment}
+              className="bg-[#107569] hover:bg-[#0e6258] text-white"
+            >
+              Finish & View Learning Path
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={!isAnswered}
+              onClick={() => setCurrentQIndex((i) => i + 1)}
+            >
+              Next Question
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // State C: Generated Prerequisite Learning Path
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -104,27 +221,20 @@ export default function LearningPathPage() {
         <div className="flex items-center gap-2">
           <Link href="/dashboard">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <BookOpen className="w-4 h-4" /> Switch Material
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button size="sm" className="gap-1.5 text-xs bg-[#107569] hover:bg-[#0e6258] text-white">
-              <GraduationCap className="w-4 h-4" /> Practice Blockers
+              <BookOpen className="w-4 h-4" /> New Material
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Sequential Prerequisite Timeline */}
       <div className="relative border-l-2 border-primary/20 ml-4 space-y-8 pl-6 pt-2">
         {steps.map((step) => {
           const isMastered = step.masteryStatus === 'mastered';
 
           return (
             <div key={step.conceptId} className="relative">
-              {/* Order / Status Badge Node */}
               <div
-                className={`absolute -left-[35px] top-1 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-sm transition-transform ${
+                className={`absolute -left-[35px] top-1 w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-sm ${
                   isMastered
                     ? 'bg-emerald-500 text-white'
                     : step.isBlocking
@@ -135,7 +245,6 @@ export default function LearningPathPage() {
                 {isMastered ? <CheckCircle2 className="w-5 h-5" /> : step.order}
               </div>
 
-              {/* Step Detail Card */}
               <Card
                 className={`transition-colors shadow-sm ${
                   step.isBlocking
@@ -171,7 +280,6 @@ export default function LearningPathPage() {
                 <CardContent className="space-y-3 text-sm">
                   <p className="text-muted-foreground">{step.reason}</p>
 
-                  {/* Contextual Justification */}
                   {step.whyExplanation && (
                     <div className="p-3 bg-muted/40 border border-border/80 rounded-lg space-y-2 text-xs">
                       <div className="flex items-center gap-1.5 font-semibold text-primary">
