@@ -1,6 +1,6 @@
 'use client';
-import CyberHologram3D from '@/components/CyberHologram3D';
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -47,7 +47,10 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const [mounted, setMounted] = useState<boolean>(false);
 
-  // Load persistent history & streak state
+  // 3D Hologram Canvas Ref
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Load history and streak
   useEffect(() => {
     setMounted(true);
 
@@ -68,19 +71,152 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // 3D Wireframe Hologram Render Loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    const width = 280;
+    const height = 280;
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    ctx.scale(2, 2);
+
+    // 3D Icosahedron Vertices
+    const vertices: [number, number, number][] = [
+      [1, 0, 0], [-1, 0, 0],
+      [0, 1, 0], [0, -1, 0],
+      [0, 0, 1], [0, 0, -1],
+      [0.7, 0.7, 0.7], [-0.7, 0.7, 0.7],
+      [0.7, -0.7, 0.7], [-0.7, -0.7, 0.7],
+      [0.7, 0.7, -0.7], [-0.7, 0.7, -0.7],
+      [0.7, -0.7, -0.7], [-0.7, -0.7, -0.7]
+    ];
+
+    const edges: [number, number][] = [
+      [0, 2], [2, 1], [1, 3], [3, 0],
+      [0, 4], [2, 4], [1, 4], [3, 4],
+      [0, 5], [2, 5], [1, 5], [3, 5],
+      [6, 7], [7, 9], [9, 8], [8, 6],
+      [10, 11], [11, 13], [13, 12], [12, 10],
+      [6, 10], [7, 11], [8, 12], [9, 13]
+    ];
+
+    // Orbiting amber particles
+    const particles = Array.from({ length: 35 }, () => ({
+      x: (Math.random() - 0.5) * 2.5,
+      y: (Math.random() - 0.5) * 2.5,
+      z: (Math.random() - 0.5) * 2.5,
+      speed: 0.003 + Math.random() * 0.006,
+    }));
+
+    let aX = 0;
+    let aY = 0;
+    let aZ = 0;
+
+    const render = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height / 2;
+      const scale = 80;
+
+      aX += 0.006;
+      aY += 0.009;
+      aZ += 0.004;
+
+      const project = (x: number, y: number, z: number): [number, number, number] => {
+        let x1 = x * Math.cos(aY) + z * Math.sin(aY);
+        let z1 = -x * Math.sin(aY) + z * Math.cos(aY);
+
+        let y2 = y * Math.cos(aX) - z1 * Math.sin(aX);
+        let z2 = y * Math.sin(aX) + z1 * Math.cos(aX);
+
+        let x3 = x1 * Math.cos(aZ) - y2 * Math.sin(aZ);
+        let y3 = x1 * Math.sin(aZ) + y2 * Math.cos(aZ);
+
+        const dist = 3.2;
+        const fov = scale / (z2 + dist);
+        return [x3 * fov + cx, y3 * fov + cy, z2];
+      };
+
+      // Draw Orbiting Particles
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.75)';
+      particles.forEach((p) => {
+        p.y -= p.speed;
+        if (p.y < -1.4) p.y = 1.4;
+        const [px, py, pz] = project(p.x, p.y, p.z);
+        const radius = Math.max(0.8, (pz + 1.8) * 1.1);
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Project vertices
+      const projected = vertices.map(([x, y, z]) => project(x, y, z));
+
+      // Draw Edges
+      ctx.lineWidth = 1.4;
+      edges.forEach(([i, j]) => {
+        const [x1, y1, z1] = projected[i];
+        const [x2, y2, z2] = projected[j];
+        const avgZ = (z1 + z2) / 2;
+        const alpha = Math.max(0.15, Math.min(0.85, (avgZ + 1.2) / 2.4));
+
+        ctx.strokeStyle = `rgba(250, 204, 21, ${alpha})`;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      });
+
+      // Draw Node Vertices
+      projected.forEach(([px, py, pz]) => {
+        const r = Math.max(2, (pz + 1.8) * 1.8);
+        ctx.fillStyle = '#fde047';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      });
+
+      // HUD Orbital Rings
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 100, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.setLineDash([10, 14]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      animId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
   const handleSelectPreset = (course: PresetCourse) => {
     const newId = `hist_${course.id}_${Date.now()}`;
-    
-    // Seed localStorage for this course
     localStorage.setItem('active_assessment_text', course.initialDocumentText);
     localStorage.setItem('active_assessment_name', course.title);
     localStorage.setItem('active_assessment_id', newId);
 
-    // Initialize course progress record
     getStudentProgress(course.id, course.title);
 
     setIsModalOpen(false);
-    // Route student straight to their learning curriculum workspace
     router.push(`/course/${course.id}`);
   };
 
@@ -182,7 +318,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Streak Counter Badge (Hydration Protected) */}
+            {/* Streak Counter Badge */}
             {mounted && streak && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-xs font-mono text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
                 <Flame className="w-3.5 h-3.5 fill-yellow-400 animate-pulse" />
@@ -190,67 +326,31 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Refer & Earn Navigation */}
             <Link href="/refer">
               <Button
                 variant="outline"
                 size="sm"
-                data-cursor="REFER"
                 className="gap-1.5 text-xs rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-all shadow-sm"
               >
                 <Gift className="w-3.5 h-3.5 text-yellow-400" /> Refer & Earn
               </Button>
             </Link>
 
-            {/* Profile Navigation */}
             <Link href="/profile">
               <Button
                 variant="outline"
                 size="sm"
-                data-cursor="USER"
                 className="gap-1.5 text-xs rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-all shadow-sm"
               >
                 <User className="w-3.5 h-3.5 text-yellow-400" /> Profile
               </Button>
             </Link>
-            {/* 3D Holographic Telemetry Engine Section */}
-<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-6 sm:p-8 rounded-3xl border border-white/10 bg-[#0e0e11]/80 backdrop-blur-xl relative overflow-hidden shadow-2xl">
-  <div className="lg:col-span-8 space-y-4">
-    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-[11px] font-mono text-yellow-400 uppercase tracking-widest">
-      <Sparkles className="w-3.5 h-3.5" /> Topological Mesh Active
-    </div>
-    <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
-      Prerequisite Topological Engine
-    </h2>
-    <p className="text-xs sm:text-sm text-neutral-400 font-light leading-relaxed max-w-xl">
-      Live 3D graph synthesis maps conceptual dependencies in real-time. When you launch a course diagnostic, prerequisite DAG nodes are dynamically structured and verified against your learning history.
-    </p>
 
-    <div className="flex flex-wrap items-center gap-4 pt-2">
-      <div className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span>DAG Solver: Online</span>
-      </div>
-      <div className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
-        <span>Gating Threshold: 75%</span>
-      </div>
-    </div>
-  </div>
-
-  {/* 3D Holographic Core Canvas */}
-  <div className="lg:col-span-4 h-64 sm:h-72 w-full flex items-center justify-center">
-    <CyberHologram3D className="w-full h-full max-w-[280px] max-h-[280px]" />
-  </div>
-</div>
-
-            {/* Analyze Course Modal Trigger */}
             <Button
               onClick={() => {
                 setModalTab('presets');
                 setIsModalOpen(true);
               }}
-              data-cursor="COURSES"
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs gap-2 rounded-full px-5 shadow-[0_0_18px_rgba(250,204,21,0.35)] transition-all"
             >
               <Compass className="w-4 h-4 stroke-[2.5]" /> Analyze New Course
@@ -258,12 +358,45 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* 3D Wireframe Hologram HUD Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-6 sm:p-8 rounded-3xl border border-white/10 bg-[#0e0e11]/85 backdrop-blur-xl relative overflow-hidden shadow-2xl">
+          <div className="lg:col-span-8 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-[11px] font-mono text-yellow-400 uppercase tracking-widest">
+              <Sparkles className="w-3.5 h-3.5" /> 3D Topological Core Active
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
+              Prerequisite DAG Hologram
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-400 font-light leading-relaxed max-w-xl">
+              Real-time 3D topological projection of conceptual nodes. The diagnostic engine maps knowledge dependencies across multidimensional vector spaces to unlock sequential module paths.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Solver: Operational</span>
+              </div>
+              <div className="px-3.5 py-1.5 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
+                <span>Threshold: 75% Pass</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3D Hologram Canvas Container (Fixed Guaranteed Dimensions) */}
+          <div className="lg:col-span-4 flex items-center justify-center relative min-h-[280px]">
+            <div className="absolute w-[240px] h-[240px] bg-yellow-400/10 rounded-full blur-3xl pointer-events-none" />
+            <canvas
+              ref={canvasRef}
+              style={{ width: '280px', height: '280px' }}
+              className="block relative z-10"
+            />
+          </div>
+        </div>
+
         {/* Quick Launch Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div
-            data-cursor="TRACKS"
-            className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between"
-          >
+          <div className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between">
             <div className="space-y-3">
               <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.2)] group-hover:scale-105 transition-transform">
                 <Compass className="w-5 h-5" />
@@ -295,10 +428,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div
-            data-cursor="UPLOAD"
-            className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between"
-          >
+          <div className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between">
             <div className="space-y-3">
               <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.2)] group-hover:scale-105 transition-transform">
                 <UploadCloud className="w-5 h-5" />
@@ -344,7 +474,6 @@ export default function DashboardPage() {
                 variant="ghost"
                 size="sm"
                 onClick={handleClearHistory}
-                data-cursor="TRASH"
                 className="text-xs text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 gap-1.5 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Clear History
@@ -365,7 +494,6 @@ export default function DashboardPage() {
               {history.map((item) => (
                 <div
                   key={item.id}
-                  data-cursor="GRAPH"
                   className="group bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-5 rounded-2xl transition-all duration-300 shadow-xl flex flex-col justify-between space-y-4 hover:-translate-y-1 cursor-pointer"
                 >
                   <div className="space-y-2">
