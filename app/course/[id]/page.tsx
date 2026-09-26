@@ -10,8 +10,7 @@ import {
   ArrowRight,
   AlertTriangle,
   Award,
-  ChevronRight,
-  Sparkles
+  ChevronRight
 } from 'lucide-react';
 import { getStudentProgress, StudentProgressRecord } from '@/lib/course-progress';
 import { PRESET_COURSES } from '@/lib/preset-courses';
@@ -25,51 +24,24 @@ export default function CourseLearningWorkspace() {
   const [activeModuleId, setActiveModuleId] = useState<string>('mod-1');
   const [activeLessonId, setActiveLessonId] = useState<string>('m1-l1');
 
-  // Find course info from presets or fallback
-  const presetInfo = PRESET_COURSES.find((c) => c.id === courseId);
-  const courseTitle = presetInfo ? presetInfo.title : 'Course Learning Track';
+  // Load the selected preset course
+  const currentCourse = PRESET_COURSES.find((c) => c.id === courseId) || PRESET_COURSES[0];
+  const curriculum = currentCourse.curriculum;
 
   useEffect(() => {
-    const data = getStudentProgress(courseId, courseTitle);
+    const data = getStudentProgress(currentCourse.id, currentCourse.title);
     setProgress(data);
-  }, [courseId, courseTitle]);
+    // Set default lesson of module 1
+    if (curriculum[0]?.lessons[0]) {
+      setActiveLessonId(curriculum[0].lessons[0].id);
+    }
+  }, [currentCourse.id, currentCourse.title, curriculum]);
 
   if (!progress) return null;
 
-  const curriculum = [
-    {
-      id: 'mod-1',
-      number: 1,
-      title: 'Module 1: Matrix Algebra & Topological Vector Spaces',
-      lessons: [
-        { id: 'm1-l1', title: 'Vector Geometry & Inner Products', duration: '14 min' },
-        { id: 'm1-l2', title: 'Eigendecomposition & Manifold Projection', duration: '22 min' },
-      ],
-      assessmentTitle: 'Module 1 Prerequisite Checkpoint',
-    },
-    {
-      id: 'mod-2',
-      number: 2,
-      title: 'Module 2: Multivariable Gradient Optimization',
-      lessons: [
-        { id: 'm2-l1', title: 'Loss Surfaces & Directional Derivatives', duration: '18 min' },
-        { id: 'm2-l2', title: 'Stochastic Backpropagation Dynamics', duration: '25 min' },
-      ],
-      assessmentTitle: 'Module 2 Prerequisite Checkpoint',
-    },
-    {
-      id: 'mod-3',
-      number: 3,
-      title: 'Module 3: Neural Topological Manifolds',
-      lessons: [
-        { id: 'm3-l1', title: 'Activation Manifolds & Non-Linear Boundaries', duration: '30 min' },
-      ],
-      assessmentTitle: 'Module 3 Final Capstone Assessment',
-    },
-  ];
-
   const currentModuleData = curriculum.find((m) => m.id === activeModuleId) || curriculum[0];
   const currentModuleState = progress.modules[activeModuleId];
+  const activeLesson = currentModuleData.lessons.find((l) => l.id === activeLessonId) || currentModuleData.lessons[0];
 
   return (
     <div className="min-h-screen bg-[#050505] text-[#f4f4f5] flex flex-col font-sans selection:bg-yellow-400 selection:text-black">
@@ -80,13 +52,13 @@ export default function CourseLearningWorkspace() {
             ← DASHBOARD
           </Link>
           <span className="text-white/20">/</span>
-          <span className="text-sm font-bold tracking-tight text-white">{courseTitle}</span>
+          <span className="text-sm font-bold tracking-tight text-white">{currentCourse.title}</span>
         </div>
 
         <div className="flex items-center gap-6">
           {progress.isCertified && (
             <Link
-              href={`/certificate?courseId=${courseId}`}
+              href={`/certificate?courseId=${currentCourse.id}`}
               className="px-3.5 py-1.5 rounded-full bg-yellow-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(250,204,21,0.4)]"
             >
               <Award className="w-4 h-4" /> View Credential
@@ -110,7 +82,7 @@ export default function CourseLearningWorkspace() {
         {/* Left: Syllabus Sidebar with Strict Locks */}
         <aside className="w-80 sm:w-88 border-r border-white/10 bg-[#0a0a0c]/90 overflow-y-auto p-4 space-y-4">
           <div className="text-[11px] font-mono uppercase tracking-widest text-neutral-400 px-1 flex items-center justify-between">
-            <span>Course Sequence</span>
+            <span>{currentCourse.category} Sequence</span>
             <span className="text-yellow-400 font-bold">{progress.overallProgress}% Complete</span>
           </div>
 
@@ -170,7 +142,7 @@ export default function CourseLearningWorkspace() {
                     <div className="pt-2 mt-2 border-t border-white/5">
                       {isUnlocked ? (
                         <Link
-                          href={`/learning-path?courseId=${courseId}&moduleId=${mod.id}&action=new`}
+                          href={`/learning-path?courseId=${currentCourse.id}&moduleId=${mod.id}&action=new`}
                           className={`w-full py-1.5 px-2.5 rounded-lg text-[11px] font-mono flex items-center justify-between border transition-all ${
                             isCompleted
                               ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
@@ -209,29 +181,33 @@ export default function CourseLearningWorkspace() {
             <>
               <div className="space-y-2">
                 <span className="text-xs font-mono uppercase tracking-wider text-yellow-400">
-                  Module {currentModuleData.number} // Core Syllabus Material
+                  {currentCourse.title} // Module {currentModuleData.number}
                 </span>
                 <h1 className="text-3xl font-extrabold text-white">
-                  {currentModuleData.lessons.find((l) => l.id === activeLessonId)?.title || 'Lesson Overview'}
+                  {activeLesson?.title}
                 </h1>
               </div>
 
               <div className="p-8 rounded-3xl border border-white/10 bg-[#0e0e11]/90 backdrop-blur-xl shadow-2xl space-y-6">
                 <div className="prose prose-invert max-w-none text-neutral-300 text-sm leading-relaxed space-y-4">
+                  <p>{activeLesson?.readingSnippet}</p>
+
+                  {activeLesson?.keyFormula && (
+                    <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] font-mono text-xs text-yellow-300">
+                      {activeLesson.keyFormula}
+                    </div>
+                  )}
+
                   <p>
-                    Mathematical grounding provides the prerequisite base for this module. Understanding vector dot products, projections, and matrix transformations is critical before evaluating neural manifolds.
-                  </p>
-                  <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] font-mono text-xs text-yellow-300">
-                    A · B = ||A|| ||B|| cos(θ)
-                  </div>
-                  <p>
-                    All diagnostic checkpoints for this module are grounded strictly in the source text. To unlock the subsequent module, you must resolve all blocking concept gaps in the prerequisite DAG.
+                    Diagnostic questions for this module evaluate the foundational concepts required to unlock subsequent stages in this curriculum track.
                   </p>
                 </div>
 
                 <div className="pt-6 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-xs text-neutral-500 font-mono">Status: In Progress</span>
-                  <Link href={`/learning-path?courseId=${courseId}&moduleId=${currentModuleData.id}&action=new`}>
+                  <span className="text-xs text-neutral-500 font-mono">
+                    Estimated Time: {activeLesson?.duration}
+                  </span>
+                  <Link href={`/learning-path?courseId=${currentCourse.id}&moduleId=${currentModuleData.id}&action=new`}>
                     <button className="px-6 py-2.5 rounded-full bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold transition-all shadow-[0_0_15px_rgba(250,204,21,0.3)] flex items-center gap-2">
                       <span>Launch Prerequisite Diagnostic</span>
                       <ChevronRight className="w-4 h-4 stroke-[2.5]" />
