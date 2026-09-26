@@ -19,8 +19,13 @@ import {
   User,
   X,
   FileText,
-  Loader2
+  Loader2,
+  Compass,
+  Cpu,
+  Flame
 } from 'lucide-react';
+import { PRESET_COURSES, PresetCourse } from '@/lib/preset-courses';
+import { getStudentProgress } from '@/lib/course-progress';
 
 interface HistoryItem {
   id: string;
@@ -36,6 +41,7 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [modalTab, setModalTab] = useState<'presets' | 'upload'>('presets');
 
   // Load persistent history from localStorage
   useEffect(() => {
@@ -48,6 +54,22 @@ export default function DashboardPage() {
       console.error('Failed to parse history:', e);
     }
   }, []);
+
+  const handleSelectPreset = (course: PresetCourse) => {
+    const newId = `hist_${course.id}_${Date.now()}`;
+    
+    // Seed localStorage for this course
+    localStorage.setItem('active_assessment_text', course.initialDocumentText);
+    localStorage.setItem('active_assessment_name', course.title);
+    localStorage.setItem('active_assessment_id', newId);
+
+    // Initialize course progress record
+    getStudentProgress(course.id, course.title);
+
+    setIsModalOpen(false);
+    // Route student straight to their learning curriculum workspace
+    router.push(`/course/${course.id}`);
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,7 +116,6 @@ export default function DashboardPage() {
         }
       }
 
-      // Generate a unique ID for this new assessment run
       const newId = `hist_${Date.now()}`;
       localStorage.setItem('active_assessment_text', extractedText);
       localStorage.setItem('active_assessment_name', file.name);
@@ -119,7 +140,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen relative bg-[#050505] text-[#f4f4f5] p-6 sm:p-10 overflow-x-hidden selection:bg-yellow-400 selection:text-black">
-      {/* 1. Ambient Amber Top Glow */}
+      {/* Ambient Amber Top Glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[850px] h-[450px] pointer-events-none z-0 blur-3xl"
         style={{
@@ -128,7 +149,6 @@ export default function DashboardPage() {
         }}
       />
 
-      {/* 2. Main Shell */}
       <div className="relative z-10 max-w-6xl mx-auto space-y-8">
         
         {/* Top Banner Navigation */}
@@ -144,7 +164,7 @@ export default function DashboardPage() {
               Adaptive Learning <span className="text-yellow-400">Dashboard</span>
             </h1>
             <p className="text-sm text-neutral-400 mt-1 max-w-xl font-light">
-              Analyze syllabus documents, assess knowledge gaps, and explore topological prerequisite paths.
+              Choose from standardized curriculum tracks or upload customized lecture notes to derive topological prerequisite roadmaps.
             </p>
           </div>
 
@@ -160,91 +180,86 @@ export default function DashboardPage() {
               </Button>
             </Link>
             <Button
-              onClick={() => setIsModalOpen(true)}
-              data-cursor="UPLOAD"
+              onClick={() => {
+                setModalTab('presets');
+                setIsModalOpen(true);
+              }}
+              data-cursor="COURSES"
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs gap-2 rounded-full px-5 shadow-[0_0_18px_rgba(250,204,21,0.35)] transition-all"
             >
-              <UploadCloud className="w-4 h-4 stroke-[2.5]" /> Analyze New Course
+              <Compass className="w-4 h-4 stroke-[2.5]" /> Analyze New Course
             </Button>
           </div>
         </div>
 
         {/* Quick Launch Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Card 1: Start Fresh Diagnostic */}
           <div
-            data-cursor="NEW"
+            data-cursor="TRACKS"
             className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between"
           >
             <div className="space-y-3">
               <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.2)] group-hover:scale-105 transition-transform">
-                <Sparkles className="w-5 h-5" />
+                <Compass className="w-5 h-5" />
               </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors font-sans">
-                  Start Fresh Diagnostic
+                  Curated Concept Tracks
                 </h3>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded border border-yellow-400/30">
-                  Ready
+                  5 Available
                 </span>
               </div>
               <p className="text-xs text-neutral-400 leading-relaxed font-light">
-                Upload a syllabus, lecture slide, or textbook chapter to generate dynamic questions and derive prerequisite graphs.
+                Explore standardized industry tracks in Machine Learning, Python, Data Science, Next.js, and Cloud Infrastructure with sequential prerequisite gates.
               </p>
             </div>
 
             <div className="pt-6 mt-4 border-t border-white/10">
               <Button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full bg-white/5 hover:bg-yellow-400 hover:text-black border border-white/10 hover:border-yellow-400 text-white font-semibold text-xs rounded-xl py-5 transition-all shadow-md group-hover:shadow-[0_0_15px_rgba(250,204,21,0.25)]"
+                onClick={() => {
+                  setModalTab('presets');
+                  setIsModalOpen(true);
+                }}
+                className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs rounded-xl py-5 shadow-[0_0_15px_rgba(250,204,21,0.25)] transition-all flex items-center justify-center gap-2"
               >
-                Upload Course Material
+                <span>Browse Recommended Courses</span>
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </Button>
             </div>
           </div>
 
-          {/* Card 2: Recent Learning Path */}
           <div
-            data-cursor="PATH"
+            data-cursor="UPLOAD"
             className="group relative bg-[#0e0e11]/90 backdrop-blur-xl border border-white/10 hover:border-yellow-400/60 p-6 sm:p-7 rounded-3xl transition-all duration-300 shadow-2xl flex flex-col justify-between"
           >
             <div className="space-y-3">
               <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.2)] group-hover:scale-105 transition-transform">
-                <History className="w-5 h-5" />
+                <UploadCloud className="w-5 h-5" />
               </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white group-hover:text-yellow-300 transition-colors font-sans">
-                  Recent Learning Path
+                  Upload Custom Syllabus
                 </h3>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                  Latest Run
+                  Custom
                 </span>
               </div>
-
-              {history.length > 0 ? (
-                <p className="text-xs text-neutral-300 leading-relaxed font-light">
-                  Continue where you left off with <span className="font-semibold text-yellow-400">{history[0].courseName}</span>.
-                </p>
-              ) : (
-                <p className="text-xs text-neutral-500 leading-relaxed font-light">
-                  No assessments taken yet. Upload a syllabus or lecture file to initialize your first prerequisite map.
-                </p>
-              )}
+              <p className="text-xs text-neutral-400 leading-relaxed font-light">
+                Drop your own college lecture slides, textbook chapter, or PDF syllabus to extract concepts and compute instant prerequisite dependencies.
+              </p>
             </div>
 
             <div className="pt-6 mt-4 border-t border-white/10">
-              {history.length > 0 ? (
-                <Link href={`/learning-path?id=${history[0].id}`}>
-                  <Button className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs rounded-xl py-5 shadow-[0_0_15px_rgba(250,204,21,0.3)] transition-all flex items-center justify-center gap-2">
-                    <span>Open Latest Path</span>
-                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-                  </Button>
-                </Link>
-              ) : (
-                <Button disabled className="w-full bg-white/5 border border-white/5 text-neutral-500 font-medium text-xs rounded-xl py-5">
-                  No Past Path Available
-                </Button>
-              )}
+              <Button
+                onClick={() => {
+                  setModalTab('upload');
+                  setIsModalOpen(true);
+                }}
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs rounded-xl py-5 transition-all"
+              >
+                Upload Syllabus or PDF
+              </Button>
             </div>
           </div>
         </div>
@@ -323,60 +338,130 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Modal for File Upload */}
+        {/* Modal: 5 Curated Course Tracks & Document Upload */}
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
-            <div className="bg-[#0e0e11] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 relative">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-5 right-5 text-neutral-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-yellow-400" />
-                  <h3 className="text-lg font-bold text-white tracking-tight">Upload Course Document</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in overflow-y-auto">
+            <div className="bg-[#0e0e11] border border-white/15 rounded-3xl p-6 sm:p-8 max-w-3xl w-full shadow-2xl space-y-6 relative my-8 max-h-[90vh] flex flex-col">
+              
+              {/* Header */}
+              <div className="flex items-start justify-between pb-4 border-b border-white/10">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-yellow-400" />
+                    <h3 className="text-xl font-extrabold text-white tracking-tight font-sans">
+                      Select or Analyze Course
+                    </h3>
+                  </div>
+                  <p className="text-xs text-neutral-400 font-light">
+                    Pick one of 5 standardized tracks or ingest custom study notes.
+                  </p>
                 </div>
-                <p className="text-xs text-neutral-400 leading-relaxed font-light">
-                  Select a syllabus, lecture slide, or textbook chapter (PDF, DOCX, TXT, MD) to extract concepts and compute prerequisite dependencies.
-                </p>
-              </div>
-
-              <label className="border-2 border-dashed border-white/15 hover:border-yellow-400/80 bg-white/[0.02] hover:bg-yellow-400/[0.03] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
-                <div className="w-12 h-12 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-                  {isUploading ? (
-                    <Loader2 className="w-6 h-6 animate-spin text-yellow-400" />
-                  ) : (
-                    <UploadCloud className="w-6 h-6 stroke-[2]" />
-                  )}
-                </div>
-                <span className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors">
-                  {isUploading ? 'Extracting concepts...' : 'Choose or drop a file'}
-                </span>
-                <span className="text-[11px] font-mono text-neutral-500 uppercase mt-1">
-                  PDF, DOCX, TXT, MD (Max 10MB)
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.docx,.txt,.md"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                />
-              </label>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => setIsModalOpen(false)}
-                  className="text-xs text-neutral-400 hover:text-white"
+                  className="text-neutral-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
                 >
-                  Cancel
-                </Button>
+                  <X className="w-5 h-5" />
+                </button>
               </div>
+
+              {/* Tab Selector */}
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setModalTab('presets')}
+                  className={`text-xs font-mono uppercase tracking-wider px-4 py-1.5 rounded-full transition-all ${
+                    modalTab === 'presets'
+                      ? 'bg-yellow-400 text-black font-bold shadow-[0_0_12px_rgba(250,204,21,0.3)]'
+                      : 'text-neutral-400 hover:text-white bg-white/5'
+                  }`}
+                >
+                  Recommended Tracks (5)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('upload')}
+                  className={`text-xs font-mono uppercase tracking-wider px-4 py-1.5 rounded-full transition-all ${
+                    modalTab === 'upload'
+                      ? 'bg-yellow-400 text-black font-bold shadow-[0_0_12px_rgba(250,204,21,0.3)]'
+                      : 'text-neutral-400 hover:text-white bg-white/5'
+                  }`}
+                >
+                  Custom File Upload
+                </button>
+              </div>
+
+              {/* Tab 1: 5 Curated Courses */}
+              {modalTab === 'presets' && (
+                <div className="overflow-y-auto space-y-3.5 pr-1 flex-1">
+                  {PRESET_COURSES.map((course) => (
+                    <div
+                      key={course.id}
+                      onClick={() => handleSelectPreset(course)}
+                      className="p-4 rounded-2xl border border-white/10 bg-white/[0.02] hover:border-yellow-400/60 hover:bg-yellow-400/[0.04] transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-yellow-400 bg-yellow-400/10 px-2 py-0.5 rounded border border-yellow-400/30">
+                            {course.badge}
+                          </span>
+                          <span className="text-[11px] font-mono text-neutral-400">
+                            {course.category} • {course.estimatedHours}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-bold text-white group-hover:text-yellow-300 transition-colors font-sans">
+                          {course.title}
+                        </h4>
+                        <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                          {course.description}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {course.topics.map((t, idx) => (
+                            <span key={idx} className="text-[10px] font-mono text-neutral-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center justify-end">
+                        <span className="px-4 py-2 rounded-xl bg-white/5 group-hover:bg-yellow-400 group-hover:text-black text-white text-xs font-bold transition-all flex items-center gap-1.5">
+                          <span>Start Track</span>
+                          <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Tab 2: Custom Document Upload */}
+              {modalTab === 'upload' && (
+                <div className="space-y-4 flex-1">
+                  <label className="border-2 border-dashed border-white/15 hover:border-yellow-400/80 bg-white/[0.02] hover:bg-yellow-400/[0.03] rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 group">
+                    <div className="w-12 h-12 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 mb-3 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                      {isUploading ? (
+                        <Loader2 className="w-6 h-6 animate-spin text-yellow-400" />
+                      ) : (
+                        <UploadCloud className="w-6 h-6 stroke-[2]" />
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-white group-hover:text-yellow-300 transition-colors">
+                      {isUploading ? 'Extracting concepts & building graph...' : 'Choose or drop syllabus file'}
+                    </span>
+                    <span className="text-[11px] font-mono text-neutral-500 uppercase mt-1">
+                      PDF, DOCX, TXT, MD (Max 10MB)
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.txt,.md"
+                      onChange={handleFileUpload}
+                      disabled={isUploading}
+                    />
+                  </label>
+                </div>
+              )}
+
             </div>
           </div>
         )}
