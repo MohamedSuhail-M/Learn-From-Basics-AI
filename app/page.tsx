@@ -6,18 +6,16 @@ import { Button } from '@/components/ui/button';
 import {
   Flame,
   ArrowRight,
-  Network,
   Users,
   Award,
   Sparkles,
-  ChevronRight,
-  CheckCircle2
+  ChevronRight
 } from 'lucide-react';
 import { PRESET_COURSES } from '@/lib/preset-courses';
 import { recordDayActivity, StreakData } from '@/lib/streak-tracker';
 
 /* -------------------------------------------------------------------------- */
-/*  ORIGINAL 3D SVG TOPOLOGICAL CORE & ORBITAL RINGS COMPONENT                */
+/*  ORIGINAL 3D SVG TOPOLOGICAL CORE WITH "START" HUD & ROTATING RINGS         */
 /* -------------------------------------------------------------------------- */
 function TopologicalMasteryHologram() {
   const [t, setT] = useState(0);
@@ -32,29 +30,29 @@ function TopologicalMasteryHologram() {
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // 1. Central Solid Gold Polyhedron (Prism / Octahedron) Vertices
+  // 1. Central Solid Gold Polyhedron (Octahedron / Prism)
   const coreVertices: [number, number, number][] = [
-    [0, -48, 0],     // 0: top apex
-    [36, 0, 36],     // 1: front right
-    [-36, 0, 36],    // 2: front left
-    [-36, 0, -36],   // 3: back left
-    [36, 0, -36],    // 4: back right
-    [0, 48, 0],      // 5: bottom apex
+    [0, -46, 0],     // 0: top apex
+    [34, 0, 34],     // 1: front right
+    [-34, 0, 34],    // 2: front left
+    [-34, 0, -34],   // 3: back left
+    [34, 0, -34],    // 4: back right
+    [0, 46, 0],      // 5: bottom apex
   ];
 
   const coreFaces = [
-    { verts: [0, 1, 2], baseColor: '#facc15', shade: '#eab308' },
-    { verts: [0, 2, 3], baseColor: '#ca8a04', shade: '#a16207' },
-    { verts: [0, 3, 4], baseColor: '#854d0e', shade: '#713f12' },
-    { verts: [0, 4, 1], baseColor: '#fde047', shade: '#facc15' },
-    { verts: [5, 2, 1], baseColor: '#eab308', shade: '#ca8a04' },
-    { verts: [5, 3, 2], baseColor: '#a16207', shade: '#854d0e' },
-    { verts: [5, 4, 3], baseColor: '#713f12', shade: '#552f0d' },
-    { verts: [5, 1, 4], baseColor: '#facc15', shade: '#eab308' },
+    { verts: [0, 1, 2], baseColor: '#facc15', stroke: '#fef08a' },
+    { verts: [0, 2, 3], baseColor: '#ca8a04', stroke: '#fde047' },
+    { verts: [0, 3, 4], baseColor: '#854d0e', stroke: '#ca8a04' },
+    { verts: [0, 4, 1], baseColor: '#fde047', stroke: '#fef08a' },
+    { verts: [5, 2, 1], baseColor: '#eab308', stroke: '#fef08a' },
+    { verts: [5, 3, 2], baseColor: '#a16207', stroke: '#facc15' },
+    { verts: [5, 4, 3], baseColor: '#713f12', stroke: '#ca8a04' },
+    { verts: [5, 1, 4], baseColor: '#facc15', stroke: '#fef08a' },
   ];
 
-  // 2. Outer Geodesic Wireframe Sphere (Icosahedron + subdivision)
-  const sphereRadius = 82;
+  // 2. Outer Geodesic Wireframe Sphere Envelope
+  const sphereRadius = 88;
   const phi = (1 + Math.sqrt(5)) / 2;
   const rawIcoNodes: [number, number, number][] = [
     [-1,  phi, 0], [ 1,  phi, 0], [-1, -phi, 0], [ 1, -phi, 0],
@@ -74,44 +72,41 @@ function TopologicalMasteryHologram() {
     [7, 6], [6, 10], [10, 2], [2, 11], [11, 4]
   ];
 
-  // 3. Floating Satellite Crystals orbiting on rings
+  // 3. Floating Satellites
   const satellites = [
-    { orbitRadius: 185, speed: 0.8, tiltX: 0.65, tiltY: 0.35, size: 14, phase: 0 },
-    { orbitRadius: 215, speed: -0.6, tiltX: -0.5, tiltY: 0.7, size: 18, phase: 2.1 },
-    { orbitRadius: 165, speed: 1.1, tiltX: 0.3, tiltY: -0.8, size: 12, phase: 4.3 },
-    { orbitRadius: 195, speed: -0.75, tiltX: 0.8, tiltY: -0.2, size: 16, phase: 1.5 },
+    { orbitRadius: 210, speed: 0.9, tiltX: 0.45, tiltY: 0.25, size: 18, phase: 0 },
+    { orbitRadius: 235, speed: -0.65, tiltX: -0.6, tiltY: 0.7, size: 20, phase: 2.4 },
+    { orbitRadius: 180, speed: 1.15, tiltX: 0.2, tiltY: -0.85, size: 14, phase: 4.1 },
+    { orbitRadius: 215, speed: -0.8, tiltX: 0.85, tiltY: -0.3, size: 16, phase: 1.2 },
   ];
 
-  // 4. Background Floating Golden Ember Particles
+  // 4. Background Floating Golden Embers
   const emberParticles = useMemo(() => {
-    return Array.from({ length: 45 }, (_, i) => ({
+    return Array.from({ length: 50 }, (_, i) => ({
       id: i,
-      x: (Math.sin(i * 99) * 260) + 275,
-      y: (Math.cos(i * 33) * 220) + 240,
-      r: (Math.sin(i * 12) * 1.5) + 1.8,
-      opacity: (Math.cos(i * 45) * 0.35) + 0.55,
-      pulseSpeed: 0.02 + (i % 5) * 0.01,
+      x: (Math.sin(i * 77) * 260) + 260,
+      y: (Math.cos(i * 44) * 220) + 230,
+      r: (Math.sin(i * 11) * 1.5) + 1.6,
+      opacity: (Math.cos(i * 35) * 0.35) + 0.55,
     }));
   }, []);
 
-  // 3D Projection & Rotation Engine
-  const cx = 275;
-  const cy = 240;
+  const cx = 260;
+  const cy = 230;
   const fov = 400;
 
-  // Polyhedron rotation angles
-  const rotX = t * 0.45;
-  const rotY = t * 0.7;
+  // Solid Core Rotation Angles
+  const rotX = t * 0.4;
+  const rotY = t * 0.65;
   const rotZ = t * 0.25;
 
   const project = (x: number, y: number, z: number, rx = rotX, ry = rotY, rz = rotZ): [number, number, number] => {
-    // Rotate Y
     let x1 = x * Math.cos(ry) + z * Math.sin(ry);
     let z1 = -x * Math.sin(ry) + z * Math.cos(ry);
-    // Rotate X
+
     let y2 = y * Math.cos(rx) - z1 * Math.sin(rx);
     let z2 = y * Math.sin(rx) + z1 * Math.cos(rx);
-    // Rotate Z
+
     let x3 = x1 * Math.cos(rz) - y2 * Math.sin(rz);
     let y3 = x1 * Math.sin(rz) + y2 * Math.cos(rz);
 
@@ -119,15 +114,15 @@ function TopologicalMasteryHologram() {
     return [x3 * scale + cx, y3 * scale + cy, z2];
   };
 
-  // Wireframe sphere rotation (slower, opposite direction)
-  const sphereRotX = t * 0.2;
-  const sphereRotY = -t * 0.35;
-  const projectedIco = rawIcoNodes.map(([x, y, z]) => project(x, y, z, sphereRotX, sphereRotY, 0));
+  // Wireframe Cage Rotation
+  const cageRotX = t * 0.2;
+  const cageRotY = -t * 0.35;
+  const projectedIco = rawIcoNodes.map(([x, y, z]) => project(x, y, z, cageRotX, cageRotY, 0));
 
   // Project solid core vertices
   const projectedCore = coreVertices.map(([x, y, z]) => project(x, y, z));
 
-  // Compute depth and visibility for faces
+  // Compute depth & backface culling for solid facets
   const sortedFaces = coreFaces
     .map((face) => {
       const p0 = projectedCore[face.verts[0]];
@@ -135,7 +130,6 @@ function TopologicalMasteryHologram() {
       const p2 = projectedCore[face.verts[2]];
       const avgZ = (p0[2] + p1[2] + p2[2]) / 3;
 
-      // Normal cross-product for backface culling
       const cross = (p1[0] - p0[0]) * (p2[1] - p0[1]) - (p1[1] - p0[1]) * (p2[0] - p0[0]);
       return { ...face, avgZ, isFront: cross < 0, pts: `${p0[0]},${p0[1]} ${p1[0]},${p1[1]} ${p2[0]},${p2[1]}` };
     })
@@ -143,40 +137,34 @@ function TopologicalMasteryHologram() {
     .sort((a, b) => b.avgZ - a.avgZ);
 
   return (
-    <div className="relative w-full max-w-[550px] h-[480px] flex items-center justify-center pointer-events-none select-none">
-      {/* Central Volumetric Amber Glow */}
-      <div className="absolute w-[360px] h-[360px] rounded-full bg-yellow-400/15 blur-3xl pointer-events-none" />
+    <div className="relative w-full max-w-[550px] h-[480px] flex items-center justify-center select-none">
+      {/* Central Volumetric Glow */}
+      <div className="absolute w-[340px] h-[340px] rounded-full bg-yellow-400/20 blur-3xl pointer-events-none" />
 
-      <svg viewBox="0 0 550 480" className="w-full h-full overflow-visible relative z-10">
+      <svg viewBox="0 0 520 460" className="w-full h-full overflow-visible relative z-10">
         <defs>
-          <radialGradient id="goldHoloGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#fef08a" stopOpacity="1" />
-            <stop offset="60%" stopColor="#facc15" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#ca8a04" stopOpacity="0" />
-          </radialGradient>
-
-          <linearGradient id="ringGoldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fef08a" stopOpacity="0.9" />
-            <stop offset="50%" stopColor="#facc15" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#854d0e" stopOpacity="0.2" />
-          </linearGradient>
-
-          <linearGradient id="ringGoldGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.2" />
-            <stop offset="50%" stopColor="#facc15" stopOpacity="0.75" />
-            <stop offset="100%" stopColor="#fef08a" stopOpacity="0.95" />
-          </linearGradient>
-
-          <filter id="goldenGlowFilter" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
+          <filter id="goldGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3.5" result="blur" />
             <feMerge>
               <feMergeNode in="blur" />
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
+
+          <linearGradient id="ringGradMain" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#fef08a" stopOpacity="0.95" />
+            <stop offset="45%" stopColor="#facc15" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#854d0e" stopOpacity="0.15" />
+          </linearGradient>
+
+          <linearGradient id="ringGradAlt" x1="100%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#854d0e" stopOpacity="0.1" />
+            <stop offset="55%" stopColor="#facc15" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#fef08a" stopOpacity="1" />
+          </linearGradient>
         </defs>
 
-        {/* Ambient Floating Dust Embers */}
+        {/* Ambient Ember Particles */}
         {emberParticles.map((ember) => {
           const pulse = Math.sin(t * 2 + ember.id) * 0.3 + ember.opacity;
           return (
@@ -186,48 +174,22 @@ function TopologicalMasteryHologram() {
               cy={ember.y}
               r={ember.r}
               fill="#facc15"
-              opacity={Math.max(0.1, pulse)}
-              className="transition-opacity"
+              opacity={Math.max(0.15, pulse)}
             />
           );
         })}
 
-        {/* --- 3D ORBITAL TORUS RINGS --- */}
-        {/* Ring 1 (Broad horizontal tilt) */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${t * 4}) rotate(-18) scale(1, 0.32)`}>
-          <ellipse
-            cx="0"
-            cy="0"
-            rx="210"
-            ry="210"
-            fill="none"
-            stroke="url(#ringGoldGrad1)"
-            strokeWidth="3.5"
-            filter="url(#goldenGlowFilter)"
-          />
-          <ellipse
-            cx="0"
-            cy="0"
-            rx="205"
-            ry="205"
-            fill="none"
-            stroke="#fde047"
-            strokeWidth="1"
-            opacity="0.8"
-          />
-        </g>
-
-        {/* Ring 2 (Counter-rotated steep angle) */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${-t * 3}) rotate(48) scale(1, 0.28)`}>
+        {/* --- ORBITAL RING 1 (Horizontal / Equatorial Tilt) --- */}
+        <g transform={`translate(${cx}, ${cy}) rotate(${t * 3.5}) rotate(-14) scale(1, 0.28)`}>
           <ellipse
             cx="0"
             cy="0"
             rx="225"
             ry="225"
             fill="none"
-            stroke="url(#ringGoldGrad2)"
+            stroke="url(#ringGradMain)"
             strokeWidth="4"
-            filter="url(#goldenGlowFilter)"
+            filter="url(#goldGlow)"
           />
           <ellipse
             cx="0"
@@ -235,52 +197,75 @@ function TopologicalMasteryHologram() {
             rx="220"
             ry="220"
             fill="none"
-            stroke="#facc15"
+            stroke="#fef08a"
             strokeWidth="1.2"
             opacity="0.85"
           />
         </g>
 
-        {/* Ring 3 (Inner orbital resonance track) */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${t * 6}) rotate(-58) scale(1, 0.42)`}>
+        {/* --- ORBITAL RING 2 (Steep Dynamic Angled Ring) --- */}
+        <g transform={`translate(${cx}, ${cy}) rotate(${-t * 2.8}) rotate(44) scale(1, 0.35)`}>
           <ellipse
             cx="0"
             cy="0"
-            rx="155"
-            ry="155"
+            rx="240"
+            ry="240"
             fill="none"
-            stroke="#eab308"
-            strokeWidth="1.5"
-            strokeDasharray="6 8"
-            opacity="0.55"
+            stroke="url(#ringGradAlt)"
+            strokeWidth="4.5"
+            filter="url(#goldGlow)"
+          />
+          <ellipse
+            cx="0"
+            cy="0"
+            rx="235"
+            ry="235"
+            fill="none"
+            stroke="#facc15"
+            strokeWidth="1.2"
+            opacity="0.9"
           />
         </g>
 
-        {/* --- GEODESIC WIREFRAME SPHERE ENVELOPE --- */}
+        {/* --- ORBITAL RING 3 (Near-Vertical Spinning Ring) --- */}
+        <g transform={`translate(${cx}, ${cy}) rotate(${t * 5}) rotate(82) scale(1, 0.22)`}>
+          <ellipse
+            cx="0"
+            cy="0"
+            rx="210"
+            ry="210"
+            fill="none"
+            stroke="#eab308"
+            strokeWidth="2.5"
+            strokeDasharray="8 6"
+            opacity="0.75"
+          />
+        </g>
+
+        {/* --- GEODESIC WIREFRAME SPHERE CAGE --- */}
         <g>
           {icoEdges.map(([start, end], idx) => {
             const p1 = projectedIco[start];
             const p2 = projectedIco[end];
             const avgZ = (p1[2] + p2[2]) / 2;
-            const alpha = Math.max(0.18, Math.min(0.9, (avgZ + sphereRadius) / (sphereRadius * 2)));
+            const alpha = Math.max(0.2, Math.min(0.95, (avgZ + sphereRadius) / (sphereRadius * 2)));
 
             return (
               <line
-                key={`ico-${idx}`}
+                key={`cage-edge-${idx}`}
                 x1={p1[0]}
                 y1={p1[1]}
                 x2={p2[0]}
                 y2={p2[1]}
                 stroke="#facc15"
-                strokeWidth="1.25"
+                strokeWidth="1.4"
                 strokeOpacity={alpha}
               />
             );
           })}
-          {/* Wireframe joints */}
           {projectedIco.map((p, idx) => (
             <circle
-              key={`ico-node-${idx}`}
+              key={`cage-node-${idx}`}
               cx={p[0]}
               cy={p[1]}
               r={2.2}
@@ -291,21 +276,62 @@ function TopologicalMasteryHologram() {
         </g>
 
         {/* --- CENTRAL SOLID SHADED GOLDEN POLYHEDRON --- */}
-        <g filter="url(#goldenGlowFilter)">
+        <g filter="url(#goldGlow)">
           {sortedFaces.map((f, idx) => (
             <polygon
-              key={`face-${idx}`}
+              key={`poly-${idx}`}
               points={f.pts}
               fill={f.baseColor}
-              stroke="#fef08a"
-              strokeWidth="1.2"
+              stroke={f.stroke}
+              strokeWidth="1.4"
               strokeLinejoin="round"
-              opacity="0.94"
+              opacity="0.96"
             />
           ))}
         </g>
 
-        {/* --- ORBITING GOLDEN SATELLITE CRYSTALS --- */}
+        {/* --- CENTRAL "START" HUD TARGETING RETICLE --- */}
+        <Link href="/dashboard" className="cursor-pointer group">
+          <g transform={`translate(${cx}, ${cy})`}>
+            {/* Outer dotted target ring */}
+            <circle
+              cx="0"
+              cy="0"
+              r="28"
+              fill="rgba(5, 5, 5, 0.45)"
+              stroke="#facc15"
+              strokeWidth="1.2"
+              strokeDasharray="4 3"
+              className="animate-[spin_10s_linear_infinite]"
+            />
+            {/* Inner subtle glow ring */}
+            <circle
+              cx="0"
+              cy="0"
+              r="22"
+              fill="rgba(250, 204, 21, 0.15)"
+              stroke="#fde047"
+              strokeWidth="1"
+              className="group-hover:fill-yellow-400/30 transition-all"
+            />
+            {/* START Label */}
+            <text
+              x="0"
+              y="3.5"
+              textAnchor="middle"
+              fill="#ffffff"
+              fontSize="9"
+              fontFamily="monospace"
+              fontWeight="900"
+              letterSpacing="0.1em"
+              className="group-hover:fill-yellow-300 transition-colors pointer-events-none"
+            >
+              START
+            </text>
+          </g>
+        </Link>
+
+        {/* --- ORBITING SOLID SATELLITE CRYSTALS --- */}
         {satellites.map((sat, idx) => {
           const currentAngle = t * sat.speed + sat.phase;
           const sx = Math.cos(currentAngle) * sat.orbitRadius;
@@ -313,12 +339,12 @@ function TopologicalMasteryHologram() {
           const sz = Math.sin(currentAngle) * sat.orbitRadius * sat.tiltY;
 
           const [spx, spy, spz] = project(sx, sy, sz, 0.2, 0.4, 0);
-          const sScale = Math.max(0.5, (spz + 200) / 250);
+          const sScale = Math.max(0.6, (spz + 200) / 250);
 
           return (
             <g
               key={`sat-${idx}`}
-              transform={`translate(${spx}, ${spy}) rotate(${t * 30 + idx * 45}) scale(${sScale})`}
+              transform={`translate(${spx}, ${spy}) rotate(${t * 35 + idx * 60}) scale(${sScale})`}
             >
               <rect
                 x={-sat.size / 2}
@@ -329,14 +355,14 @@ function TopologicalMasteryHologram() {
                 stroke="#fef08a"
                 strokeWidth="1.5"
                 transform="rotate(45)"
-                filter="url(#goldenGlowFilter)"
+                filter="url(#goldGlow)"
               />
               <rect
                 x={-sat.size / 4}
                 y={-sat.size / 4}
                 width={sat.size / 2}
                 height={sat.size / 2}
-                fill="#a16207"
+                fill="#854d0e"
                 transform="rotate(45)"
               />
             </g>
@@ -348,7 +374,7 @@ function TopologicalMasteryHologram() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  HERO LANDING PAGE                                                         */
+/*  HERO LANDING PAGE (MATCHING VIDEO / SCREENSHOT LAYOUT)                     */
 /* -------------------------------------------------------------------------- */
 export default function HomePage() {
   const [streak, setStreak] = useState<StreakData | null>(null);
@@ -362,7 +388,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#030303] text-[#f4f4f5] selection:bg-yellow-400 selection:text-black relative overflow-x-hidden font-sans">
-      {/* Subtle Ambient Amber Top Glow */}
+      {/* Top Ambient Glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[550px] pointer-events-none z-0 blur-3xl opacity-70"
         style={{
@@ -406,10 +432,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Exact Hero Section as Screenshot */}
+      {/* Exact Hero Section as Video Frame */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-28 space-y-20">
-        
-        {/* HERO 3-COLUMN / FLEX CONTAINER */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[560px]">
           
           {/* Left Column: Big Bold Typography */}
@@ -460,14 +484,13 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Center Column: 3D Holographic Topological Gold Core with Orbiting Rings */}
+          {/* Center Column: 3D Holographic Topological Gold Core with Orbiting Rings & "START" Center */}
           <div className="lg:col-span-5 flex items-center justify-center relative">
             <TopologicalMasteryHologram />
           </div>
 
-          {/* Right Column: Hero Feature Cards (from Screenshot) */}
+          {/* Right Column: Hero Feature Cards */}
           <div className="lg:col-span-3 space-y-4">
-            {/* Card 1: Topological Sequencing */}
             <div className="p-6 rounded-2xl border border-white/10 bg-[#0c0c0f]/90 backdrop-blur-xl shadow-xl space-y-3 relative group hover:border-yellow-400/40 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-yellow-400 font-bold">
@@ -483,7 +506,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Card 2: Zero Boilerplate */}
             <div className="p-6 rounded-2xl border border-white/10 bg-[#0c0c0f]/90 backdrop-blur-xl shadow-xl space-y-3 relative group hover:border-yellow-400/40 transition-colors">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white tracking-tight">
