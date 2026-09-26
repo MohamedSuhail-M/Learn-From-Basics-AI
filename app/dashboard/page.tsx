@@ -1,5 +1,5 @@
 'use client';
-
+import CyberHologram3D from '@/components/CyberHologram3D';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -213,6 +213,36 @@ export default function DashboardPage() {
                 <User className="w-3.5 h-3.5 text-yellow-400" /> Profile
               </Button>
             </Link>
+            {/* 3D Holographic Telemetry Engine Section */}
+<div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center p-6 sm:p-8 rounded-3xl border border-white/10 bg-[#0e0e11]/80 backdrop-blur-xl relative overflow-hidden shadow-2xl">
+  <div className="lg:col-span-8 space-y-4">
+    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-[11px] font-mono text-yellow-400 uppercase tracking-widest">
+      <Sparkles className="w-3.5 h-3.5" /> Topological Mesh Active
+    </div>
+    <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-sans">
+      Prerequisite Topological Engine
+    </h2>
+    <p className="text-xs sm:text-sm text-neutral-400 font-light leading-relaxed max-w-xl">
+      Live 3D graph synthesis maps conceptual dependencies in real-time. When you launch a course diagnostic, prerequisite DAG nodes are dynamically structured and verified against your learning history.
+    </p>
+
+    <div className="flex flex-wrap items-center gap-4 pt-2">
+      <div className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>DAG Solver: Online</span>
+      </div>
+      <div className="px-3.5 py-2 rounded-xl bg-white/5 border border-white/10 font-mono text-xs text-neutral-300 flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_#facc15]" />
+        <span>Gating Threshold: 75%</span>
+      </div>
+    </div>
+  </div>
+
+  {/* 3D Holographic Core Canvas */}
+  <div className="lg:col-span-4 h-64 sm:h-72 w-full flex items-center justify-center">
+    <CyberHologram3D className="w-full h-full max-w-[280px] max-h-[280px]" />
+  </div>
+</div>
 
             {/* Analyze Course Modal Trigger */}
             <Button
