@@ -12,7 +12,10 @@ import {
   Award,
   ChevronRight,
   CheckSquare,
-  Square
+  Square,
+  Code2,
+  Sigma,
+  ListChecks
 } from 'lucide-react';
 import { getStudentProgress, toggleLessonCompletion, StudentProgressRecord } from '@/lib/course-progress';
 import { PRESET_COURSES } from '@/lib/preset-courses';
@@ -52,7 +55,6 @@ export default function CourseLearningWorkspace() {
   };
 
   const handleLaunchModuleQuiz = () => {
-    // Collect all lesson texts for this module to ground the quiz questions
     const moduleLessonContent = currentModuleData.lessons
       .map((l) => `${l.title}:\n${l.readingSnippet} ${l.keyFormula ? `[Formula: ${l.keyFormula}]` : ''}`)
       .join('\n\n');
@@ -203,7 +205,7 @@ export default function CourseLearningWorkspace() {
           </div>
         </aside>
 
-        {/* Right: Active Lesson View & Read Checkmark */}
+        {/* Right: Active Lesson View & Deep Reader */}
         <main className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto space-y-6">
           {!currentModuleState?.isUnlocked && activeModuleId !== 'mod-1' ? (
             <div className="p-8 border border-rose-500/30 bg-rose-500/[0.03] rounded-3xl space-y-4 text-center my-12">
@@ -222,23 +224,62 @@ export default function CourseLearningWorkspace() {
                 <h1 className="text-3xl font-extrabold text-white">
                   {activeLesson?.title}
                 </h1>
+                <p className="text-xs text-neutral-400 font-light">
+                  {currentModuleData.summary}
+                </p>
               </div>
 
               <div className="p-8 rounded-3xl border border-white/10 bg-[#0e0e11]/90 backdrop-blur-xl shadow-2xl space-y-6">
-                <div className="prose prose-invert max-w-none text-neutral-300 text-sm leading-relaxed space-y-4">
-                  <p>{activeLesson?.readingSnippet}</p>
-
-                  {activeLesson?.keyFormula && (
-                    <div className="p-4 rounded-xl border border-white/10 bg-white/[0.02] font-mono text-xs text-yellow-300">
-                      {activeLesson.keyFormula}
-                    </div>
-                  )}
-
-                  <p>
-                    Diagnostic questions for this module will evaluate this specific lesson&apos;s principles to test your prerequisite understanding before unlocking subsequent stages.
-                  </p>
+                {/* 1. Deep Theory Body */}
+                <div className="prose prose-invert max-w-none text-neutral-300 text-sm leading-relaxed space-y-4 whitespace-pre-line font-light">
+                  {activeLesson?.readingSnippet}
                 </div>
 
+                {/* 2. Governing Mathematical Formula */}
+                {activeLesson?.keyFormula && (
+                  <div className="p-4 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.03] space-y-1.5">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-yellow-400 font-semibold flex items-center gap-1.5">
+                      <Sigma className="w-3.5 h-3.5" /> Governing Equation // Formula
+                    </span>
+                    <div className="font-mono text-xs text-yellow-300 overflow-x-auto py-1">
+                      {activeLesson.keyFormula}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Implementation Code Example */}
+                {activeLesson?.codeExample && (
+                  <div className="rounded-2xl border border-white/10 bg-black/60 overflow-hidden shadow-inner">
+                    <div className="px-4 py-2 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                      <span className="text-[11px] font-mono text-neutral-400 flex items-center gap-1.5">
+                        <Code2 className="w-3.5 h-3.5 text-yellow-400" /> Implementation Blueprint
+                      </span>
+                      <span className="text-[10px] font-mono text-neutral-500 uppercase">Production Snippet</span>
+                    </div>
+                    <pre className="p-4 text-xs font-mono text-neutral-200 overflow-x-auto leading-relaxed">
+                      <code>{activeLesson.codeExample}</code>
+                    </pre>
+                  </div>
+                )}
+
+                {/* 4. Prerequisite Mastery Takeaways */}
+                {activeLesson?.keyTakeaways && activeLesson.keyTakeaways.length > 0 && (
+                  <div className="space-y-2 pt-2 border-t border-white/10">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-neutral-400 font-semibold flex items-center gap-1.5">
+                      <ListChecks className="w-3.5 h-3.5 text-yellow-400" /> Prerequisite Mastery Checklist
+                    </span>
+                    <ul className="space-y-1.5">
+                      {activeLesson.keyTakeaways.map((takeaway, idx) => (
+                        <li key={idx} className="text-xs text-neutral-300 flex items-start gap-2 font-light">
+                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 mt-1.5 shrink-0" />
+                          <span>{takeaway}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* 5. Completion Toggle & Quiz Trigger */}
                 <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <button
                     type="button"
@@ -252,12 +293,12 @@ export default function CourseLearningWorkspace() {
                     {isCurrentLessonDone ? (
                       <>
                         <CheckSquare className="w-4 h-4 text-emerald-400" />
-                        <span>Completed</span>
+                        <span>Lesson Completed</span>
                       </>
                     ) : (
                       <>
                         <Square className="w-4 h-4 text-neutral-500" />
-                        <span>Mark as Completed</span>
+                        <span>Mark Lesson as Studied</span>
                       </>
                     )}
                   </button>
@@ -267,7 +308,7 @@ export default function CourseLearningWorkspace() {
                     onClick={handleLaunchModuleQuiz}
                     className="px-6 py-2.5 rounded-full bg-yellow-400 hover:bg-yellow-300 text-black text-xs font-bold transition-all shadow-[0_0_15px_rgba(250,204,21,0.3)] flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    <span>Take Module {currentModuleData.number} Checkpoint Quiz</span>
+                    <span>Take Module {currentModuleData.number} Checkpoint Assessment</span>
                     <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                   </button>
                 </div>
