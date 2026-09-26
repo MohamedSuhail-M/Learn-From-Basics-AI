@@ -4,19 +4,169 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
-  Compass,
   Flame,
   ArrowRight,
-  ShieldCheck,
   Network,
   Users,
   Award,
   Sparkles,
-  BookOpen,
   ChevronRight
 } from 'lucide-react';
 import { PRESET_COURSES } from '@/lib/preset-courses';
-import { getStreakData, recordDayActivity, StreakData } from '@/lib/streak-tracker';
+import { recordDayActivity, StreakData } from '@/lib/streak-tracker';
+
+// 3D SVG Vector Hologram Engine
+function Hologram3DVector() {
+  const [rotation, setRotation] = useState({ aX: 0, aY: 0, aZ: 0 });
+
+  useEffect(() => {
+    let animId: number;
+    const animate = () => {
+      setRotation((prev) => ({
+        aX: prev.aX + 0.007,
+        aY: prev.aY + 0.011,
+        aZ: prev.aZ + 0.004,
+      }));
+      animId = requestAnimationFrame(animate);
+    };
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  // 3D Octahedron & Central Topology Coordinates
+  const nodes: [number, number, number][] = [
+    [0, -1.25, 0],   // Top apex
+    [1.15, 0, 0],    // Right
+    [0, 0, 1.15],    // Front
+    [-1.15, 0, 0],   // Left
+    [0, 0, -1.15],   // Back
+    [0, 1.25, 0],    // Bottom apex
+    // Inner orbital lattice
+    [0.55, 0.55, 0.55],
+    [-0.55, 0.55, -0.55],
+    [0.55, -0.55, -0.55],
+    [-0.55, -0.55, 0.55]
+  ];
+
+  const edges: [number, number][] = [
+    [0, 1], [0, 2], [0, 3], [0, 4], // Upper pyramid
+    [5, 1], [5, 2], [5, 3], [5, 4], // Lower pyramid
+    [1, 2], [2, 3], [3, 4], [4, 1], // Equator belt
+    [6, 7], [7, 8], [8, 9], [9, 6]  // Inner lattice
+  ];
+
+  // 3D Perspective Projection
+  const cx = 160;
+  const cy = 160;
+  const fov = 130;
+  const dist = 3.3;
+
+  const projectedNodes = nodes.map(([x, y, z]) => {
+    let x1 = x * Math.cos(rotation.aY) + z * Math.sin(rotation.aY);
+    let z1 = -x * Math.sin(rotation.aY) + z * Math.cos(rotation.aY);
+
+    let y2 = y * Math.cos(rotation.aX) - z1 * Math.sin(rotation.aX);
+    let z2 = y * Math.sin(rotation.aX) + z1 * Math.cos(rotation.aX);
+
+    let x3 = x1 * Math.cos(rotation.aZ) - y2 * Math.sin(rotation.aZ);
+    let y3 = x1 * Math.sin(rotation.aZ) + y2 * Math.cos(rotation.aZ);
+
+    const scale = fov / (z2 + dist);
+    return {
+      x: x3 * scale + cx,
+      y: y3 * scale + cy,
+      z: z2,
+    };
+  });
+
+  return (
+    <div className="relative w-[320px] h-[320px] flex items-center justify-center select-none pointer-events-none">
+      {/* Radiant Amber Glow Backdrop */}
+      <div className="absolute w-[260px] h-[260px] bg-yellow-400/15 rounded-full blur-3xl animate-pulse" />
+
+      <svg width="320" height="320" viewBox="0 0 320 320" className="relative z-10 overflow-visible">
+        <defs>
+          <radialGradient id="homeHoloNodeGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#facc15" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#ca8a04" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Orbit Reticles */}
+        <circle
+          cx="160"
+          cy="160"
+          r="140"
+          fill="none"
+          stroke="#facc15"
+          strokeWidth="1"
+          strokeDasharray="6 10"
+          opacity="0.25"
+          className="animate-[spin_24s_linear_infinite]"
+        />
+        <circle
+          cx="160"
+          cy="160"
+          r="120"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth="1"
+          strokeDasharray="3 6"
+          opacity="0.12"
+          className="animate-[spin_14s_linear_infinite_reverse]"
+        />
+
+        {/* Wireframe Edges */}
+        {edges.map(([start, end], idx) => {
+          const p1 = projectedNodes[start];
+          const p2 = projectedNodes[end];
+          const avgZ = (p1.z + p2.z) / 2;
+          const alpha = Math.max(0.18, Math.min(0.9, (avgZ + 1.2) / 2.4));
+
+          return (
+            <line
+              key={`edge-${idx}`}
+              x1={p1.x}
+              y1={p1.y}
+              x2={p2.x}
+              y2={p2.y}
+              stroke="#facc15"
+              strokeWidth="1.5"
+              strokeOpacity={alpha}
+            />
+          );
+        })}
+
+        {/* Node Vertices */}
+        {projectedNodes.map((p, idx) => {
+          const radius = Math.max(2.6, (p.z + 1.6) * 2.4);
+          const opacity = Math.max(0.35, (p.z + 1.6) / 2.6);
+
+          return (
+            <g key={`node-${idx}`}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={radius * 1.8}
+                fill="url(#homeHoloNodeGlow)"
+                opacity={opacity * 0.6}
+              />
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={radius}
+                fill="#fde047"
+                stroke="#000000"
+                strokeWidth="1"
+                opacity={opacity}
+              />
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [streak, setStreak] = useState<StreakData | null>(null);
@@ -75,37 +225,50 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-20 pb-28 space-y-16">
-        <div className="text-center space-y-6 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 text-yellow-400 text-[11px] font-mono uppercase tracking-widest">
-            <Sparkles className="w-3.5 h-3.5" /> Next-Gen Prerequisite Learning DAG
+      {/* Hero Section with 3D Hologram */}
+      <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-16">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+          {/* Left Text Column */}
+          <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 text-yellow-400 text-[11px] font-mono uppercase tracking-widest">
+              <Sparkles className="w-3.5 h-3.5" /> Next-Gen Prerequisite Learning DAG
+            </div>
+
+            <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
+              Master Any Domain Through{' '}
+              <span className="text-yellow-400">Topological Progression.</span>
+            </h1>
+
+            <p className="text-sm sm:text-base text-neutral-400 font-light leading-relaxed max-w-xl mx-auto lg:mx-0">
+              Break free from linear, superficial courses. Upload any syllabus or select a curated track to map conceptual knowledge graphs, clear prerequisite gates, and earn verified competency credentials.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+              <Link href="/dashboard">
+                <Button className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-sm rounded-full px-8 py-6 shadow-[0_0_25px_rgba(250,204,21,0.4)] flex items-center justify-center gap-2">
+                  <span>Start Learning Free</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </Button>
+              </Link>
+              <Link href="/refer">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto rounded-full border-white/10 hover:bg-white/5 text-neutral-300 px-6 py-6 text-sm"
+                >
+                  <Users className="w-4 h-4 text-yellow-400 mr-2" /> Invite Peers (+100 XP)
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
-            Master Any Domain Through{' '}
-            <span className="text-yellow-400">Topological Progression.</span>
-          </h1>
-
-          <p className="text-sm sm:text-base text-neutral-400 font-light leading-relaxed max-w-2xl mx-auto">
-            Break free from linear, superficial courses. Upload any syllabus or select a curated track to map conceptual knowledge graphs, clear prerequisite gates, and earn verified competency credentials.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/dashboard">
-              <Button className="w-full sm:w-auto bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-sm rounded-full px-8 py-6 shadow-[0_0_25px_rgba(250,204,21,0.4)] flex items-center justify-center gap-2">
-                <span>Start Learning Free</span>
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-              </Button>
-            </Link>
-            <Link href="/refer">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto rounded-full border-white/10 hover:bg-white/5 text-neutral-300 px-6 py-6 text-sm"
-              >
-                <Users className="w-4 h-4 text-yellow-400 mr-2" /> Invite Peers (+100 XP)
-              </Button>
-            </Link>
+          {/* Right 3D Vector Hologram */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center">
+            <Hologram3DVector />
+            <div className="text-center pt-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-yellow-400/70">
+                Topological Core // Active Synthesis
+              </span>
+            </div>
           </div>
         </div>
 
