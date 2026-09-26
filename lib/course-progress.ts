@@ -3,7 +3,7 @@ export interface ModuleState {
   moduleNumber: number;
   isUnlocked: boolean;
   isCompleted: boolean;
-  score: number | null; // e.g. 85 for 85%
+  score: number | null;
   completedLessons: string[];
 }
 
@@ -19,7 +19,7 @@ export interface StudentProgressRecord {
 }
 
 const STORAGE_KEY = 'lms_student_progress_v1';
-const PASSING_THRESHOLD = 75; // Must achieve >= 75% to unlock subsequent module
+const PASSING_THRESHOLD = 75;
 
 export function getStudentProgress(courseId: string, defaultTitle: string = 'Course Track'): StudentProgressRecord {
   if (typeof window === 'undefined') {
@@ -54,7 +54,7 @@ function createInitialRecord(courseId: string, courseTitle: string): StudentProg
       'mod-1': {
         moduleId: 'mod-1',
         moduleNumber: 1,
-        isUnlocked: true, // Module 1 is open by default
+        isUnlocked: true,
         isCompleted: false,
         score: null,
         completedLessons: [],
@@ -81,9 +81,23 @@ function createInitialRecord(courseId: string, courseTitle: string): StudentProg
   };
 }
 
-/**
- * Evaluates assessment results and unlocks the next module if threshold is satisfied
- */
+export function toggleLessonCompletion(courseId: string, moduleId: string, lessonId: string): StudentProgressRecord {
+  const record = getStudentProgress(courseId);
+  const mod = record.modules[moduleId];
+  if (!mod) return record;
+
+  if (!mod.completedLessons) mod.completedLessons = [];
+
+  if (mod.completedLessons.includes(lessonId)) {
+    mod.completedLessons = mod.completedLessons.filter((id) => id !== lessonId);
+  } else {
+    mod.completedLessons.push(lessonId);
+  }
+
+  saveStudentProgress(record);
+  return record;
+}
+
 export function recordAssessmentResult(
   courseId: string,
   moduleId: string,
@@ -110,7 +124,6 @@ export function recordAssessmentResult(
     }
   }
 
-  // Calculate overall platform completion
   const totalMods = moduleOrder.length;
   const completedMods = moduleOrder.filter((id) => progress.modules[id]?.isCompleted).length;
   progress.overallProgress = Math.round((completedMods / totalMods) * 100);

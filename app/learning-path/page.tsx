@@ -67,6 +67,8 @@ function LearningPathContent() {
   const isNewAction = searchParams.get('action') === 'new';
   const courseId = searchParams.get('courseId') || 'ml-foundations';
   const moduleId = searchParams.get('moduleId') || 'mod-1';
+  const moduleTitle = searchParams.get('moduleTitle') || '';
+  const moduleNumber = searchParams.get('moduleNumber') || '1';
 
   const [activeCourse, setActiveCourse] = useState<string>('Uploaded Material');
   const [loading, setLoading] = useState<boolean>(true);
@@ -112,7 +114,7 @@ function LearningPathContent() {
       }
     }
 
-    // 2. Fetch fresh diagnostic questions from uploaded material
+    // 2. Fetch fresh diagnostic questions grounded in this specific module's lessons
     const docText = localStorage.getItem('active_assessment_text') || '';
 
     async function loadQuiz() {
@@ -122,7 +124,12 @@ function LearningPathContent() {
         const res = await fetch('/api/generate-quiz', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentText: docText, topic: savedName }),
+          body: JSON.stringify({
+            documentText: docText,
+            topic: savedName,
+            moduleTitle,
+            moduleNumber,
+          }),
         });
 
         const data = await res.json();
@@ -133,17 +140,17 @@ function LearningPathContent() {
         if (data.questions && data.questions.length > 0) {
           setQuestions(data.questions);
         } else {
-          throw new Error('No diagnostic questions returned');
+          throw new Error('No diagnostic questions returned for this module');
         }
       } catch (err: any) {
-        setErrorMessage(err.message || 'Error generating assessment');
+        setErrorMessage(err.message || 'Error generating module assessment');
       } finally {
         setLoading(false);
       }
     }
 
     loadQuiz();
-  }, [assessmentId, isNewAction]);
+  }, [assessmentId, isNewAction, moduleTitle, moduleNumber]);
 
   const handleSelectOption = (qId: number, optIdx: number) => {
     setSelectedAnswers((prev) => ({ ...prev, [qId]: optIdx }));
@@ -181,7 +188,7 @@ function LearningPathContent() {
           ? `Mastered: Verified understanding of ${q.concept}.`
           : `Knowledge Gap: Review ${q.concept} before proceeding.`,
         sourceQuote: q.sourceQuote || q.explanation,
-        sourceContext: q.sourceContext || `Section ${idx + 1}`,
+        sourceContext: q.sourceContext || `${moduleTitle || 'Module'} - Concept ${idx + 1}`,
         prerequisites: q.prerequisites || (idx > 0 ? [questions[idx - 1].concept] : []),
         userChoice: userChoiceIdx !== undefined ? q.options[userChoiceIdx] : undefined,
         correctChoice: q.options[q.correctIndex],
@@ -230,7 +237,7 @@ function LearningPathContent() {
       console.error('History save error:', err);
     }
 
-    // Execute Module Gating Evaluation
+    // Execute Module Gating Evaluation (Unlocks next module if score >= 75%)
     const outcome = recordAssessmentResult(courseId, moduleId, scorePercent);
     setGatingResult({
       ...outcome,
@@ -257,10 +264,10 @@ function LearningPathContent() {
       <div className="flex flex-col items-center justify-center min-h-[65vh] space-y-4 px-4 text-center">
         <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
         <h2 className="text-xl font-bold tracking-tight text-white font-sans">
-          Generating Diagnostic Assessment
+          Generating Module {moduleNumber} Assessment
         </h2>
         <p className="text-sm text-neutral-400 max-w-sm font-light">
-          Extracting concepts and establishing topological prerequisite graph...
+          Extracting lesson concepts and establishing topological prerequisite graph...
         </p>
       </div>
     );
@@ -271,22 +278,22 @@ function LearningPathContent() {
     return (
       <div className="max-w-lg mx-auto my-12 p-8 border border-white/10 rounded-3xl bg-[#0e0e11]/90 shadow-2xl space-y-4 text-center">
         <AlertTriangle className="w-10 h-10 text-yellow-400 mx-auto" />
-        <h2 className="text-lg font-bold text-white font-sans">Assessment Generation Error</h2>
+        <h2 className="text-lg font-bold text-white font-sans">Module Assessment Error</h2>
         <p className="text-xs text-rose-400 bg-rose-500/10 p-3.5 rounded-xl border border-rose-500/20 font-mono text-left">
           {errorMessage}
         </p>
         <Button
           variant="outline"
           className="w-full border-white/10 hover:bg-white/10 text-white rounded-xl"
-          onClick={() => router.push('/dashboard')}
+          onClick={() => router.push(`/course/${courseId}`)}
         >
-          Back to Dashboard
+          Return to Course Workspace
         </Button>
       </div>
     );
   }
 
-  // State 3: Taking Diagnostic Quiz
+  // State 3: Taking Module Checkpoint Quiz
   if (!assessmentCompleted && questions.length > 0) {
     const currentQ = questions[currentQIndex];
     const isAnswered = selectedAnswers[currentQ.id] !== undefined;
@@ -297,7 +304,7 @@ function LearningPathContent() {
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
           <div className="space-y-1">
             <span className="text-[11px] font-mono uppercase tracking-wider text-yellow-400 font-semibold">
-              Diagnostic Assessment Checkpoint
+              Module {moduleNumber} // Diagnostic Checkpoint
             </span>
             <h1 className="text-xl font-bold tracking-tight text-white font-sans">{activeCourse}</h1>
           </div>
@@ -309,7 +316,7 @@ function LearningPathContent() {
         <Card className="border border-white/10 bg-[#0e0e11]/90 backdrop-blur-xl shadow-2xl rounded-3xl">
           <CardHeader>
             <div className="text-[11px] text-neutral-400 font-mono uppercase mb-1">
-              Target Concept: <span className="text-yellow-400 font-semibold">{currentQ.concept}</span>
+              Evaluating Concept: <span className="text-yellow-400 font-semibold">{currentQ.concept}</span>
             </div>
             <CardTitle className="text-base font-semibold leading-relaxed text-white">
               {currentQ.question}
@@ -359,7 +366,7 @@ function LearningPathContent() {
               onClick={handleFinishAssessment}
               className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold text-xs rounded-full px-5 shadow-[0_0_18px_rgba(250,204,21,0.35)]"
             >
-              Finish & Evaluate Prerequisite DAG
+              Finish & Check Module Gating
             </Button>
           ) : (
             <Button
@@ -377,7 +384,7 @@ function LearningPathContent() {
     );
   }
 
-  // State 4: Persistent Prerequisite Knowledge Graph & LMS Outcome
+  // State 4: Persistent Prerequisite Knowledge Graph & Module Outcome
   const blockingGaps = graphNodes.filter((n) => n.isBlocking);
   const masteredNodes = graphNodes.filter((n) => !n.isBlocking);
 
@@ -391,16 +398,16 @@ function LearningPathContent() {
               onClick={() => router.push(`/course/${courseId}`)}
               className="hover:text-yellow-400 flex items-center gap-1 cursor-pointer font-mono"
             >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to Course Track
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Course Workspace
             </button>
             <span>/</span>
             <span className="font-medium text-white">{activeCourse}</span>
           </div>
           <h1 className="text-2xl font-extrabold tracking-tight text-white font-sans">
-            Prerequisite Knowledge Graph
+            Module {moduleNumber} Prerequisite Knowledge Graph
           </h1>
           <p className="text-xs text-neutral-400 font-light">
-            Topological prerequisite DAG. Inspect nodes below to view grounded source citations and external resources.
+            Topological dependency flow for this module. Inspect nodes to view verbatim course excerpts and external study material.
           </p>
         </div>
 
@@ -411,7 +418,7 @@ function LearningPathContent() {
             className="gap-1.5 text-xs rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-white"
             onClick={() => router.push('/dashboard')}
           >
-            <History className="w-4 h-4 text-yellow-400" /> History
+            <History className="w-4 h-4 text-yellow-400" /> Dashboard
           </Button>
           <Button
             size="sm"
@@ -419,12 +426,12 @@ function LearningPathContent() {
             variant="outline"
             className="gap-1.5 text-xs rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-white"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-yellow-400" /> Retake
+            <RotateCcw className="w-3.5 h-3.5 text-yellow-400" /> Retake Quiz
           </Button>
         </div>
       </div>
 
-      {/* Gating Feedback Banner (shown after assessment run) */}
+      {/* Gating Outcome Banner */}
       {gatingResult && (
         <div
           className={`p-5 rounded-3xl border transition-all ${
@@ -443,16 +450,16 @@ function LearningPathContent() {
                 )}
                 <h3 className="text-base font-bold text-white font-sans">
                   {gatingResult.scorePercent >= 75
-                    ? `Prerequisite Checkpoint Passed (${gatingResult.scorePercent}%)`
-                    : `Threshold Not Met (${gatingResult.scorePercent}% / 75% Required)`}
+                    ? `Module ${moduleNumber} Passed (${gatingResult.scorePercent}%)`
+                    : `Threshold Incomplete (${gatingResult.scorePercent}% / 75% Required)`}
                 </h3>
               </div>
               <p className="text-xs text-neutral-300 font-light">
                 {gatingResult.scorePercent >= 75
                   ? gatingResult.isCourseComplete
-                    ? 'All modules completed. Your verified competency certificate has been generated.'
-                    : `Prerequisite criteria satisfied. Next module in sequence has been unlocked.`
-                  : 'Review the identified concept blockers in the inspector below before re-evaluating.'}
+                    ? 'All modules completed across this curriculum track. Your verified credential is now available.'
+                    : `Prerequisite threshold passed. Next sequential module in this track has been unlocked.`
+                  : 'Review the identified conceptual blockers in the inspector below before re-evaluating.'}
               </p>
             </div>
 
@@ -466,7 +473,7 @@ function LearningPathContent() {
               ) : (
                 <Link href={`/course/${courseId}`}>
                   <Button className="bg-white/10 hover:bg-white/20 text-white font-semibold text-xs rounded-full px-5 flex items-center gap-1.5">
-                    <span>Return to Curriculum</span>
+                    <span>Return to Course Workspace</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
@@ -487,7 +494,7 @@ function LearningPathContent() {
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono uppercase tracking-wider text-neutral-400">
-              Identified Gaps
+              Module Knowledge Gaps
             </span>
             <AlertOctagon
               className={`w-4 h-4 ${blockingGaps.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}
@@ -516,7 +523,7 @@ function LearningPathContent() {
         <div className="p-5 rounded-2xl border border-white/10 bg-[#0e0e11]/80">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-mono uppercase tracking-wider text-neutral-400">
-              Target Graph Node
+              Target Module Concept
             </span>
             <Sparkles className="w-4 h-4 text-yellow-400" />
           </div>
@@ -625,12 +632,12 @@ function LearningPathContent() {
           </div>
         </div>
 
-        {/* Right: Node Inspector with Citations & External Links */}
+        {/* Right: Node Inspector with Grounded Citations */}
         <div className="lg:col-span-5 space-y-4 sticky top-6">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-yellow-400" />
             <h2 className="text-sm font-bold tracking-tight text-white font-sans">
-              Node Inspector & Citations
+              Node Inspector & Source Citations
             </h2>
           </div>
 
@@ -671,7 +678,7 @@ function LearningPathContent() {
                         Selected: <span className="text-neutral-300">{selectedNode.userChoice || 'Missed'}</span>
                       </div>
                       <div className="text-emerald-400">
-                        Correct: <span className="text-neutral-200">{selectedNode.correctChoice}</span>
+                        Target: <span className="text-neutral-200">{selectedNode.correctChoice}</span>
                       </div>
                     </div>
                   )}
@@ -681,10 +688,10 @@ function LearningPathContent() {
                 <div className="space-y-2 pt-2 border-t border-white/10">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-yellow-400 flex items-center gap-1 font-semibold">
-                      <Quote className="w-3.5 h-3.5" /> Source Document Citation
+                      <Quote className="w-3.5 h-3.5" /> Module Excerpt Citation
                     </span>
                     <span className="text-[10px] text-neutral-400 font-mono bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                      {selectedNode.sourceContext || 'Document Grounding'}
+                      {selectedNode.sourceContext}
                     </span>
                   </div>
 
@@ -693,7 +700,7 @@ function LearningPathContent() {
                   </blockquote>
 
                   <p className="text-[11px] text-neutral-500 font-light">
-                    Passage derived from your syllabus. Review this section to master this concept.
+                    Passage derived from this module&apos;s lessons. Review to resolve this prerequisite gap.
                   </p>
                 </div>
 
@@ -701,7 +708,7 @@ function LearningPathContent() {
                 {selectedNode.learningResource && (
                   <div className="pt-2 border-t border-white/10 space-y-2">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                      <GraduationCap className="w-3.5 h-3.5 text-yellow-400" /> Recommended Study Material
+                      <GraduationCap className="w-3.5 h-3.5 text-yellow-400" /> Recommended Study Resource
                     </span>
 
                     <a
@@ -742,7 +749,7 @@ export default function LearningPathPage() {
         <div className="flex flex-col items-center justify-center min-h-[65vh] space-y-4">
           <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
           <p className="text-xs font-mono text-neutral-400 uppercase tracking-wider">
-            Loading learning path...
+            Loading module assessment...
           </p>
         </div>
       }

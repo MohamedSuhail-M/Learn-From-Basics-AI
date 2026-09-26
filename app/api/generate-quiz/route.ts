@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {
-    const { documentText, topic } = await req.json();
+    const { documentText, topic, moduleTitle, moduleNumber } = await req.json();
 
     const apiKey =
       process.env.GEMINI_API_KEY ||
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'GEMINI_API_KEY is not configured in .env.local' },
+        { error: 'GEMINI_API_KEY is not configured in environment variables' },
         { status: 500 }
       );
     }
@@ -24,42 +24,45 @@ export async function POST(req: NextRequest) {
         ? documentText.slice(0, 8000)
         : topic || 'Foundational Computing Systems & Algorithms';
 
-    const prompt = `Analyze this course material and generate 4 sequential prerequisite multiple-choice questions.
+    const prompt = `Analyze this specific course module and generate 4 sequential prerequisite multiple-choice questions testing ONLY concepts from this module.
 
-MATERIAL:
+MODULE INFO:
+Title: ${moduleTitle || 'Core Module'} (Module #${moduleNumber || 1})
+Course Track: ${topic || 'Computer Science'}
+
+MODULE CURRICULUM & LESSON CONTENT:
 """
 ${cleanContent}
 """
 
 INSTRUCTIONS:
-1. Ground every question strictly in the provided material.
+1. Every question MUST evaluate foundational principles specifically described in this module text.
 2. For "sourceQuote", extract an exact quote, definition, or formula from the text.
-3. For "sourceContext", identify the specific module, section header, or topic from the text.
-4. For "learningResource", provide a reliable external learning link (official documentation, Wikipedia, or OpenCourseWare) relevant to that prerequisite.
-5. Return ONLY a valid JSON array matching this schema (no markdown, no code blocks):
+3. For "sourceContext", identify the specific module sub-lesson or topic.
+4. For "learningResource", provide a reliable external learning link (MDN, Wikipedia, arXiv, or official documentation) to study that prerequisite.
+5. Return ONLY a valid JSON array matching this schema (no markdown formatting, no code blocks):
 [
   {
     "id": 1,
-    "concept": "Name of Concept",
-    "question": "Question evaluating this concept?",
-    "options": ["Correct Answer", "Option B", "Option C", "Option D"],
+    "concept": "Specific Concept Name",
+    "question": "Question evaluating this module concept?",
+    "options": ["Correct Answer", "Distractor B", "Distractor C", "Distractor D"],
     "correctIndex": 0,
-    "explanation": "Why this answer is correct based on the text.",
-    "sourceQuote": "Verbatim quote from the material.",
-    "sourceContext": "Section / Chapter / Topic reference",
+    "explanation": "Why this answer is correct based on the module text.",
+    "sourceQuote": "Verbatim quote or formula from the module text.",
+    "sourceContext": "${moduleTitle || 'Module'} - Lesson Concept",
     "prerequisites": [],
     "learningResource": {
-      "title": "MDN Web Docs / Wikipedia / MIT OCW",
+      "title": "Topic Study Reference",
       "url": "https://en.wikipedia.org/wiki/..."
     }
   }
 ]`;
 
     const modelCandidates = [
-      'gemini-3.8-flash',
-      'gemini-3.5-flash-lite',
       'gemini-2.5-flash',
       'gemini-2.0-flash',
+      'gemini-1.5-flash',
     ];
 
     let rawText = '';
@@ -76,7 +79,7 @@ INSTRUCTIONS:
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {
-                temperature: 0.3,
+                temperature: 0.25,
                 responseMimeType: 'application/json',
               },
             }),
