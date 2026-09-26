@@ -22,10 +22,12 @@ import {
   Loader2,
   Compass,
   Cpu,
-  Flame
+  Flame,
+  Gift
 } from 'lucide-react';
 import { PRESET_COURSES, PresetCourse } from '@/lib/preset-courses';
 import { getStudentProgress } from '@/lib/course-progress';
+import { getStreakData, recordDayActivity, StreakData } from '@/lib/streak-tracker';
 
 interface HistoryItem {
   id: string;
@@ -42,9 +44,13 @@ export default function DashboardPage() {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [modalTab, setModalTab] = useState<'presets' | 'upload'>('presets');
+  const [streak, setStreak] = useState<StreakData | null>(null);
+  const [mounted, setMounted] = useState<boolean>(false);
 
-  // Load persistent history from localStorage
+  // Load persistent history & streak state
   useEffect(() => {
+    setMounted(true);
+
     try {
       const raw = localStorage.getItem('assessment_history_v1');
       if (raw) {
@@ -52,6 +58,13 @@ export default function DashboardPage() {
       }
     } catch (e) {
       console.error('Failed to parse history:', e);
+    }
+
+    try {
+      const currentStreak = recordDayActivity();
+      setStreak(currentStreak);
+    } catch (e) {
+      console.error('Failed to parse streak:', e);
     }
   }, []);
 
@@ -169,6 +182,27 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Streak Counter Badge (Hydration Protected) */}
+            {mounted && streak && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-xs font-mono text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
+                <Flame className="w-3.5 h-3.5 fill-yellow-400 animate-pulse" />
+                <span className="font-bold">{streak.currentStreak} Day Streak</span>
+              </div>
+            )}
+
+            {/* Refer & Earn Navigation */}
+            <Link href="/refer">
+              <Button
+                variant="outline"
+                size="sm"
+                data-cursor="REFER"
+                className="gap-1.5 text-xs rounded-full border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white transition-all shadow-sm"
+              >
+                <Gift className="w-3.5 h-3.5 text-yellow-400" /> Refer & Earn
+              </Button>
+            </Link>
+
+            {/* Profile Navigation */}
             <Link href="/profile">
               <Button
                 variant="outline"
@@ -179,6 +213,8 @@ export default function DashboardPage() {
                 <User className="w-3.5 h-3.5 text-yellow-400" /> Profile
               </Button>
             </Link>
+
+            {/* Analyze Course Modal Trigger */}
             <Button
               onClick={() => {
                 setModalTab('presets');
