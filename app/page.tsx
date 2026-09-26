@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,113 +15,138 @@ import {
 import { PRESET_COURSES } from '@/lib/preset-courses';
 import { recordDayActivity, StreakData } from '@/lib/streak-tracker';
 
-// 3D SVG Vector Hologram Engine
-function Hologram3DVector() {
-  const [rotation, setRotation] = useState({ aX: 0, aY: 0, aZ: 0 });
+// Original 3D Cyber-Noir Hologram Wireframe Matrix
+function OriginalCyberHologram3D() {
+  const [angle, setAngle] = useState({ x: 25, y: 35, z: 0 });
 
   useEffect(() => {
     let animId: number;
-    const animate = () => {
-      setRotation((prev) => ({
-        aX: prev.aX + 0.007,
-        aY: prev.aY + 0.011,
-        aZ: prev.aZ + 0.004,
+    const loop = () => {
+      setAngle((prev) => ({
+        x: (prev.x + 0.35) % 360,
+        y: (prev.y + 0.55) % 360,
+        z: (prev.z + 0.2) % 360,
       }));
-      animId = requestAnimationFrame(animate);
+      animId = requestAnimationFrame(loop);
     };
-    animId = requestAnimationFrame(animate);
+    animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
   }, []);
 
-  // 3D Octahedron & Central Topology Coordinates
-  const nodes: [number, number, number][] = [
-    [0, -1.25, 0],   // Top apex
-    [1.15, 0, 0],    // Right
-    [0, 0, 1.15],    // Front
-    [-1.15, 0, 0],   // Left
-    [0, 0, -1.15],   // Back
-    [0, 1.25, 0],    // Bottom apex
-    // Inner orbital lattice
-    [0.55, 0.55, 0.55],
-    [-0.55, 0.55, -0.55],
-    [0.55, -0.55, -0.55],
-    [-0.55, -0.55, 0.55]
-  ];
+  // 3D Geometry: Hypercube / Nested Topological Lattice
+  const vertices = useMemo(() => {
+    const s1 = 80;
+    const s2 = 42;
+    return [
+      // Outer Hypercube
+      [-s1, -s1, -s1], [s1, -s1, -s1], [s1, s1, -s1], [-s1, s1, -s1],
+      [-s1, -s1, s1],  [s1, -s1, s1],  [s1, s1, s1],  [-s1, s1, s1],
+      // Inner Topological Core
+      [-s2, -s2, -s2], [s2, -s2, -s2], [s2, s2, -s2], [-s2, s2, -s2],
+      [-s2, -s2, s2],  [s2, -s2, s2],  [s2, s2, s2],  [-s2, s2, s2],
+    ];
+  }, []);
 
-  const edges: [number, number][] = [
-    [0, 1], [0, 2], [0, 3], [0, 4], // Upper pyramid
-    [5, 1], [5, 2], [5, 3], [5, 4], // Lower pyramid
-    [1, 2], [2, 3], [3, 4], [4, 1], // Equator belt
-    [6, 7], [7, 8], [8, 9], [9, 6]  // Inner lattice
-  ];
+  const edges = useMemo(() => {
+    return [
+      // Outer Cube
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      [0, 4], [1, 5], [2, 6], [3, 7],
+      // Inner Core
+      [8, 9], [9, 10], [10, 11], [11, 8],
+      [12, 13], [13, 14], [14, 15], [15, 12],
+      [8, 12], [9, 13], [10, 14], [11, 15],
+      // Inter-dimensional bridges
+      [0, 8], [1, 9], [2, 10], [3, 11],
+      [4, 12], [5, 13], [6, 14], [7, 15],
+    ];
+  }, []);
 
-  // 3D Perspective Projection
-  const cx = 160;
-  const cy = 160;
-  const fov = 130;
-  const dist = 3.3;
+  // Projection logic
+  const radX = (angle.x * Math.PI) / 180;
+  const radY = (angle.y * Math.PI) / 180;
+  const radZ = (angle.z * Math.PI) / 180;
 
-  const projectedNodes = nodes.map(([x, y, z]) => {
-    let x1 = x * Math.cos(rotation.aY) + z * Math.sin(rotation.aY);
-    let z1 = -x * Math.sin(rotation.aY) + z * Math.cos(rotation.aY);
+  const cx = 175;
+  const cy = 175;
+  const fov = 260;
 
-    let y2 = y * Math.cos(rotation.aX) - z1 * Math.sin(rotation.aX);
-    let z2 = y * Math.sin(rotation.aX) + z1 * Math.cos(rotation.aX);
+  const projected = vertices.map(([vx, vy, vz]) => {
+    // Rotate Y
+    let x1 = vx * Math.cos(radY) + vz * Math.sin(radY);
+    let z1 = -vx * Math.sin(radY) + vz * Math.cos(radY);
 
-    let x3 = x1 * Math.cos(rotation.aZ) - y2 * Math.sin(rotation.aZ);
-    let y3 = x1 * Math.sin(rotation.aZ) + y2 * Math.cos(rotation.aZ);
+    // Rotate X
+    let y2 = vy * Math.cos(radX) - z1 * Math.sin(radX);
+    let z2 = vy * Math.sin(radX) + z1 * Math.cos(radX);
 
-    const scale = fov / (z2 + dist);
+    // Rotate Z
+    let x3 = x1 * Math.cos(radZ) - y2 * Math.sin(radZ);
+    let y3 = x1 * Math.sin(radZ) + y2 * Math.cos(radZ);
+
+    const perspective = fov / (fov + z2 + 180);
     return {
-      x: x3 * scale + cx,
-      y: y3 * scale + cy,
+      x: x3 * perspective + cx,
+      y: y3 * perspective + cy,
       z: z2,
+      scale: perspective,
     };
   });
 
   return (
-    <div className="relative w-[320px] h-[320px] flex items-center justify-center select-none pointer-events-none">
-      {/* Radiant Amber Glow Backdrop */}
-      <div className="absolute w-[260px] h-[260px] bg-yellow-400/15 rounded-full blur-3xl animate-pulse" />
+    <div className="relative w-[350px] h-[350px] flex items-center justify-center select-none pointer-events-none">
+      {/* Dynamic Cyber-Noir Radial Aura */}
+      <div
+        className="absolute w-[280px] h-[280px] rounded-full blur-3xl pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(250,204,21,0.2) 0%, rgba(202,138,4,0.05) 50%, transparent 75%)',
+        }}
+      />
 
-      <svg width="320" height="320" viewBox="0 0 320 320" className="relative z-10 overflow-visible">
+      <svg width="350" height="350" viewBox="0 0 350 350" className="relative z-10 overflow-visible">
         <defs>
-          <radialGradient id="homeHoloNodeGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#facc15" stopOpacity="0.9" />
+          <radialGradient id="holoNodeGlowOriginal" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#fef08a" stopOpacity="1" />
+            <stop offset="50%" stopColor="#facc15" stopOpacity="0.8" />
             <stop offset="100%" stopColor="#ca8a04" stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        {/* Orbit Reticles */}
+        {/* Tactical Crosshair Grid */}
+        <line x1="30" y1="175" x2="320" y2="175" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.08" strokeDasharray="3 4" />
+        <line x1="175" y1="30" x2="175" y2="320" stroke="#ffffff" strokeWidth="0.5" strokeOpacity="0.08" strokeDasharray="3 4" />
+
+        {/* Concentric HUD Reticles */}
         <circle
-          cx="160"
-          cy="160"
-          r="140"
+          cx="175"
+          cy="175"
+          r="150"
           fill="none"
           stroke="#facc15"
           strokeWidth="1"
-          strokeDasharray="6 10"
-          opacity="0.25"
-          className="animate-[spin_24s_linear_infinite]"
+          strokeDasharray="4 8"
+          opacity="0.22"
+          className="animate-[spin_30s_linear_infinite]"
         />
         <circle
-          cx="160"
-          cy="160"
-          r="120"
+          cx="175"
+          cy="175"
+          r="130"
           fill="none"
           stroke="#ffffff"
-          strokeWidth="1"
-          strokeDasharray="3 6"
+          strokeWidth="0.75"
+          strokeDasharray="12 16"
           opacity="0.12"
-          className="animate-[spin_14s_linear_infinite_reverse]"
+          className="animate-[spin_20s_linear_infinite_reverse]"
         />
 
-        {/* Wireframe Edges */}
+        {/* Connecting Edges */}
         {edges.map(([start, end], idx) => {
-          const p1 = projectedNodes[start];
-          const p2 = projectedNodes[end];
+          const p1 = projected[start];
+          const p2 = projected[end];
           const avgZ = (p1.z + p2.z) / 2;
-          const alpha = Math.max(0.18, Math.min(0.9, (avgZ + 1.2) / 2.4));
+          const alpha = Math.max(0.12, Math.min(0.85, (avgZ + 120) / 240));
 
           return (
             <line
@@ -131,38 +156,47 @@ function Hologram3DVector() {
               x2={p2.x}
               y2={p2.y}
               stroke="#facc15"
-              strokeWidth="1.5"
+              strokeWidth={idx >= 12 && idx < 24 ? '1.2' : '1.5'}
               strokeOpacity={alpha}
             />
           );
         })}
 
-        {/* Node Vertices */}
-        {projectedNodes.map((p, idx) => {
-          const radius = Math.max(2.6, (p.z + 1.6) * 2.4);
-          const opacity = Math.max(0.35, (p.z + 1.6) / 2.6);
+        {/* 3D Vertices */}
+        {projected.map((p, idx) => {
+          const isInner = idx >= 8;
+          const radius = (isInner ? 2.5 : 3.5) * p.scale;
+          const opacity = Math.max(0.3, Math.min(1, (p.z + 100) / 200));
 
           return (
-            <g key={`node-${idx}`}>
+            <g key={`vertex-${idx}`}>
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={radius * 1.8}
-                fill="url(#homeHoloNodeGlow)"
-                opacity={opacity * 0.6}
+                r={radius * 2}
+                fill="url(#holoNodeGlowOriginal)"
+                opacity={opacity * 0.7}
               />
               <circle
                 cx={p.x}
                 cy={p.y}
                 r={radius}
                 fill="#fde047"
-                stroke="#000000"
-                strokeWidth="1"
+                stroke="#000"
+                strokeWidth="0.75"
                 opacity={opacity}
               />
             </g>
           );
         })}
+
+        {/* Floating Telemetry Labels */}
+        <text x="35" y="45" fill="#facc15" fontSize="8" fontFamily="monospace" opacity="0.6">
+          X: {angle.x.toFixed(1)}° Y: {angle.y.toFixed(1)}°
+        </text>
+        <text x="245" y="315" fill="#facc15" fontSize="8" fontFamily="monospace" opacity="0.6">
+          DAG: SYNTHESIZED
+        </text>
       </svg>
     </div>
   );
@@ -201,7 +235,7 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-4 sm:gap-6">
-          {/* Daily Streak Counter HUD (Hydration Guarded) */}
+          {/* Daily Streak Counter HUD */}
           {mounted && streak && (
             <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-yellow-400/30 text-xs font-mono">
               <Flame className="w-4 h-4 text-yellow-400 animate-pulse fill-yellow-400" />
@@ -225,7 +259,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section with 3D Hologram */}
+      {/* Hero Section */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 pt-16 pb-28 space-y-16">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           {/* Left Text Column */}
@@ -263,7 +297,7 @@ export default function HomePage() {
 
           {/* Right 3D Vector Hologram */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center">
-            <Hologram3DVector />
+            <OriginalCyberHologram3D />
             <div className="text-center pt-2">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-yellow-400/70">
                 Topological Core // Active Synthesis
