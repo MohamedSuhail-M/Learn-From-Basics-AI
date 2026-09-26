@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,20 +15,64 @@ import { PRESET_COURSES } from '@/lib/preset-courses';
 import { recordDayActivity, StreakData } from '@/lib/streak-tracker';
 
 /* -------------------------------------------------------------------------- */
-/*  ORIGINAL 3D SVG TOPOLOGICAL CORE WITH "START" HUD & ROTATING RINGS         */
+/*  TOUCH- & MOUSE-RESPONSIVE 3D TOPOLOGICAL CORE WITH "START" HUD            */
 /* -------------------------------------------------------------------------- */
 function TopologicalMasteryHologram() {
   const [t, setT] = useState(0);
+
+  // Manual rotation offsets driven by touch/drag gestures
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const isDragging = useRef(false);
+  const lastPointer = useRef({ x: 0, y: 0 });
+  const velocity = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     let animId: number;
     const animate = () => {
       setT((prev) => prev + 0.015);
+
+      // Inertial momentum dampening when not actively dragging
+      if (!isDragging.current) {
+        setDragOffset((prev) => ({
+          x: prev.x + velocity.current.x,
+          y: prev.y + velocity.current.y,
+        }));
+        velocity.current.x *= 0.94;
+        velocity.current.y *= 0.94;
+      }
+
       animId = requestAnimationFrame(animate);
     };
     animId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animId);
   }, []);
+
+  // Pointer & Touch Handlers
+  const handlePointerDown = (e: React.PointerEvent) => {
+    isDragging.current = true;
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    velocity.current = { x: 0, y: 0 };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastPointer.current.x;
+    const dy = e.clientY - lastPointer.current.y;
+
+    lastPointer.current = { x: e.clientX, y: e.clientY };
+    velocity.current = { x: dx * 0.007, y: dy * 0.007 };
+
+    setDragOffset((prev) => ({
+      x: prev.x + dx * 0.007,
+      y: prev.y + dy * 0.007,
+    }));
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    isDragging.current = false;
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+  };
 
   // 1. Central Solid Gold Polyhedron (Octahedron / Prism)
   const coreVertices: [number, number, number][] = [
@@ -95,9 +139,9 @@ function TopologicalMasteryHologram() {
   const cy = 230;
   const fov = 400;
 
-  // Solid Core Rotation Angles
-  const rotX = t * 0.4;
-  const rotY = t * 0.65;
+  // Polyhedron rotation angles with touch-drag offset applied
+  const rotX = t * 0.4 - dragOffset.y;
+  const rotY = t * 0.65 + dragOffset.x;
   const rotZ = t * 0.25;
 
   const project = (x: number, y: number, z: number, rx = rotX, ry = rotY, rz = rotZ): [number, number, number] => {
@@ -114,9 +158,9 @@ function TopologicalMasteryHologram() {
     return [x3 * scale + cx, y3 * scale + cy, z2];
   };
 
-  // Wireframe Cage Rotation
-  const cageRotX = t * 0.2;
-  const cageRotY = -t * 0.35;
+  // Wireframe Cage Rotation with subtle responsive tilt
+  const cageRotX = t * 0.2 - dragOffset.y * 0.7;
+  const cageRotY = -t * 0.35 + dragOffset.x * 0.7;
   const projectedIco = rawIcoNodes.map(([x, y, z]) => project(x, y, z, cageRotX, cageRotY, 0));
 
   // Project solid core vertices
@@ -137,11 +181,17 @@ function TopologicalMasteryHologram() {
     .sort((a, b) => b.avgZ - a.avgZ);
 
   return (
-    <div className="relative w-full max-w-[550px] h-[480px] flex items-center justify-center select-none">
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      className="relative w-full max-w-[550px] h-[480px] flex items-center justify-center select-none cursor-grab active:cursor-grabbing touch-none"
+    >
       {/* Central Volumetric Glow */}
       <div className="absolute w-[340px] h-[340px] rounded-full bg-yellow-400/20 blur-3xl pointer-events-none" />
 
-      <svg viewBox="0 0 520 460" className="w-full h-full overflow-visible relative z-10">
+      <svg viewBox="0 0 520 460" className="w-full h-full overflow-visible relative z-10 pointer-events-none">
         <defs>
           <filter id="goldGlow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="3.5" result="blur" />
@@ -180,7 +230,7 @@ function TopologicalMasteryHologram() {
         })}
 
         {/* --- ORBITAL RING 1 (Horizontal / Equatorial Tilt) --- */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${t * 3.5}) rotate(-14) scale(1, 0.28)`}>
+        <g transform={`translate(${cx}, ${cy}) rotate(${t * 3.5 + dragOffset.x * 25}) rotate(-14) scale(1, 0.28)`}>
           <ellipse
             cx="0"
             cy="0"
@@ -204,7 +254,7 @@ function TopologicalMasteryHologram() {
         </g>
 
         {/* --- ORBITAL RING 2 (Steep Dynamic Angled Ring) --- */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${-t * 2.8}) rotate(44) scale(1, 0.35)`}>
+        <g transform={`translate(${cx}, ${cy}) rotate(${-t * 2.8 - dragOffset.x * 20}) rotate(${44 + dragOffset.y * 15}) scale(1, 0.35)`}>
           <ellipse
             cx="0"
             cy="0"
@@ -228,7 +278,7 @@ function TopologicalMasteryHologram() {
         </g>
 
         {/* --- ORBITAL RING 3 (Near-Vertical Spinning Ring) --- */}
-        <g transform={`translate(${cx}, ${cy}) rotate(${t * 5}) rotate(82) scale(1, 0.22)`}>
+        <g transform={`translate(${cx}, ${cy}) rotate(${t * 5 + dragOffset.y * 30}) rotate(82) scale(1, 0.22)`}>
           <ellipse
             cx="0"
             cy="0"
@@ -291,7 +341,7 @@ function TopologicalMasteryHologram() {
         </g>
 
         {/* --- CENTRAL "START" HUD TARGETING RETICLE --- */}
-        <Link href="/dashboard" className="cursor-pointer group">
+        <Link href="/dashboard" className="cursor-pointer group pointer-events-auto">
           <g transform={`translate(${cx}, ${cy})`}>
             {/* Outer dotted target ring */}
             <circle
@@ -333,18 +383,18 @@ function TopologicalMasteryHologram() {
 
         {/* --- ORBITING SOLID SATELLITE CRYSTALS --- */}
         {satellites.map((sat, idx) => {
-          const currentAngle = t * sat.speed + sat.phase;
+          const currentAngle = t * sat.speed + sat.phase + dragOffset.x * 0.5;
           const sx = Math.cos(currentAngle) * sat.orbitRadius;
           const sy = Math.sin(currentAngle) * sat.orbitRadius * sat.tiltX;
           const sz = Math.sin(currentAngle) * sat.orbitRadius * sat.tiltY;
 
-          const [spx, spy, spz] = project(sx, sy, sz, 0.2, 0.4, 0);
+          const [spx, spy, spz] = project(sx, sy, sz, 0.2 - dragOffset.y * 0.3, 0.4 + dragOffset.x * 0.3, 0);
           const sScale = Math.max(0.6, (spz + 200) / 250);
 
           return (
             <g
               key={`sat-${idx}`}
-              transform={`translate(${spx}, ${spy}) rotate(${t * 35 + idx * 60}) scale(${sScale})`}
+              transform={`translate(${spx}, ${spy}) rotate(${t * 35 + idx * 60 + dragOffset.x * 50}) scale(${sScale})`}
             >
               <rect
                 x={-sat.size / 2}
@@ -374,7 +424,7 @@ function TopologicalMasteryHologram() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  HERO LANDING PAGE (MATCHING VIDEO / SCREENSHOT LAYOUT)                     */
+/*  HERO LANDING PAGE                                                         */
 /* -------------------------------------------------------------------------- */
 export default function HomePage() {
   const [streak, setStreak] = useState<StreakData | null>(null);
@@ -432,7 +482,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Exact Hero Section as Video Frame */}
+      {/* Hero Section */}
       <main className="relative z-10 max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-28 space-y-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[560px]">
           
@@ -484,7 +534,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Center Column: 3D Holographic Topological Gold Core with Orbiting Rings & "START" Center */}
+          {/* Center Column: Touch- & Drag-Responsive 3D Holographic Topological Gold Core */}
           <div className="lg:col-span-5 flex items-center justify-center relative">
             <TopologicalMasteryHologram />
           </div>
